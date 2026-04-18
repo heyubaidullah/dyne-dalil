@@ -17,6 +17,7 @@ import {
 import { globalStats } from "@/lib/queries/workspaces";
 import { listRecentActivity } from "@/lib/queries/recent";
 import { formatDistanceToNow } from "@/lib/format";
+import { LogoMark } from "@/components/layout/logo";
 
 export const revalidate = 60;
 
@@ -34,33 +35,49 @@ export default async function HomePage() {
     <>
       <section className="relative dalil-gradient-hero">
         <div className="dalil-grid-bg absolute inset-0 opacity-60" aria-hidden />
-        <div className="relative mx-auto flex max-w-6xl flex-col items-center px-6 pt-20 pb-16 text-center sm:pt-28">
-          <Badge variant="outline" className="mb-6 gap-1.5 bg-card/80 backdrop-blur">
+        <div className="relative mx-auto flex max-w-6xl flex-col items-center px-4 pt-14 pb-12 text-center sm:px-6 sm:pt-20 sm:pb-16 md:pt-28">
+          <LogoMark size={72} priority className="mb-5 sm:mb-6" />
+          <Badge
+            variant="outline"
+            className="mb-5 gap-1.5 bg-card/80 backdrop-blur"
+          >
             <Sparkles className="h-3.5 w-3.5 text-teal-700" />
             Dalil · AI-native founder memory
           </Badge>
-          <h1 className="max-w-3xl font-display text-4xl font-semibold leading-[1.08] tracking-tight text-ink-950 dark:text-ink-50 sm:text-5xl md:text-6xl">
+          <h1 className="max-w-3xl font-display text-3xl font-semibold leading-[1.1] tracking-tight text-ink-950 dark:text-ink-50 sm:text-4xl md:text-5xl lg:text-6xl">
             Stop losing what the market already told you.
           </h1>
-          <p className="mt-5 max-w-2xl text-base text-muted-foreground sm:text-lg">
+          <p className="mt-4 max-w-2xl text-sm text-muted-foreground sm:mt-5 sm:text-base md:text-lg">
             Dalil captures customer conversations, reconciles AI and founder
             understanding into a trusted source of truth, recalls similar
             issues from the past, and links every decision to the evidence
             behind it.
           </p>
 
-          <div className="mt-10 w-full max-w-2xl">
+          <div className="mt-8 w-full max-w-2xl sm:mt-10">
             <HeroChat />
           </div>
 
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-2 text-sm">
-            <Button asChild variant="outline" className="bg-card/60 backdrop-blur">
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-sm sm:mt-6">
+            <Button
+              asChild
+              variant="outline"
+              className="bg-card/60 backdrop-blur"
+            >
               <Link href="/workspaces/new">Create workspace</Link>
             </Button>
-            <Button asChild variant="outline" className="bg-card/60 backdrop-blur">
+            <Button
+              asChild
+              variant="outline"
+              className="bg-card/60 backdrop-blur"
+            >
               <Link href="/w/halal-delivery/capture">Upload signal</Link>
             </Button>
-            <Button asChild variant="outline" className="bg-card/60 backdrop-blur">
+            <Button
+              asChild
+              variant="outline"
+              className="bg-card/60 backdrop-blur"
+            >
               <Link href="/ideas">Open Idea Vault</Link>
             </Button>
           </div>

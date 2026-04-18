@@ -51,9 +51,10 @@ export function TopNav() {
         <div className="flex items-center gap-8">
           <Link
             href="/"
+            aria-label="Dalil home"
             className="flex items-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <Logo />
+            <Logo variant="adaptive" size={32} priority />
           </Link>
           <nav className="hidden items-center gap-1 md:flex">
             {NAV_LINKS.map((link) => (
@@ -91,9 +92,10 @@ export function TopNav() {
             >
               <Menu className="h-5 w-5" />
             </SheetTrigger>
-            <SheetContent side="right" className="w-80 p-0">
+            <SheetContent side="right" className="w-[min(22rem,90vw)] p-0">
               <SheetHeader className="border-b border-border px-6 py-4">
-                <SheetTitle className="font-display text-base">
+                <SheetTitle className="flex items-center gap-2 font-display text-base">
+                  <Logo variant="mark" size={24} />
                   Navigate
                 </SheetTitle>
               </SheetHeader>

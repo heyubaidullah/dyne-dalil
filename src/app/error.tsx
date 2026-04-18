@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AlertTriangle, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { LogoMark } from "@/components/layout/logo";
 
 export default function GlobalError({
   error,
@@ -22,9 +23,12 @@ export default function GlobalError({
     <div className="mx-auto flex min-h-[70vh] w-full max-w-xl items-center justify-center px-6 py-16">
       <Card className="w-full">
         <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-gold-100 ring-1 ring-gold-300/60">
-            <AlertTriangle className="h-5 w-5 text-gold-700" />
-          </span>
+          <div className="relative">
+            <LogoMark size={56} />
+            <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-gold-100 ring-2 ring-background">
+              <AlertTriangle className="h-3.5 w-3.5 text-gold-700" />
+            </span>
+          </div>
           <div className="space-y-1">
             <h1 className="font-display text-xl font-semibold">
               Something went sideways.

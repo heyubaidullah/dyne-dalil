@@ -67,7 +67,7 @@ export default async function WorkspaceDashboard(
         "What the market is saying, what you decided because of it, and what to test next."
       }
     >
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
         <RollupCard
           icon={<Inbox className="h-4 w-4" />}
           label="Signals captured"

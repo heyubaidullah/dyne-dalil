@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import { LogoMark } from "@/components/layout/logo";
 
 type Turn = { role: "user" | "assistant"; text: string };
 
@@ -294,13 +295,11 @@ export function StartModal({
         className="flex h-[88vh] w-[min(1200px,96vw)] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-none"
         showCloseButton={false}
       >
-        <header className="flex items-center justify-between gap-4 border-b border-border bg-card px-6 py-4">
-          <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-700 text-white shadow-sm">
-              <Sparkles className="h-4 w-4" />
-            </span>
+        <header className="flex items-center justify-between gap-4 border-b border-border bg-card px-4 py-3 sm:px-6 sm:py-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <LogoMark size={36} />
             <div className="min-w-0">
-              <DialogTitle className="font-display text-lg leading-tight">
+              <DialogTitle className="font-display text-base leading-tight sm:text-lg">
                 Dalil Start
               </DialogTitle>
               <DialogDescription className="text-xs">
