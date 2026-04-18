@@ -14,7 +14,7 @@ export function PageStub({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="mx-auto w-full max-w-6xl px-6 py-12">
+    <div className="dalil-page-enter mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
       <div className="mb-10 flex flex-col gap-3">
         {eyebrow && (
           <p className="text-sm font-medium text-teal-700">{eyebrow}</p>

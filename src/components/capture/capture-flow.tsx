@@ -31,9 +31,10 @@ import {
   Quote,
 } from "lucide-react";
 import { TagInput } from "./tag-input";
-import { ingestSignalAction } from "@/app/actions/signals";
-import { confirmAnalysisAction } from "@/app/actions/signals";
-import type { Extraction } from "@/lib/ai/extract";
+import {
+  ingestSignalAction,
+  type Extraction,
+} from "@/app/actions/signals";
 
 type Similar = {
   id: string;
@@ -94,26 +95,48 @@ export function CaptureFlow({ workspaceId }: { workspaceId: string }) {
   function confirmExtraction() {
     if (!extraction || !signalId) return;
     startTransition(async () => {
-      const res = await confirmAnalysisAction({
-        signal_id: signalId,
-        workspace_id: workspaceId,
-        confirmed_summary: extraction.summary,
-        founder_notes: founderNotes,
-        pain_points: extraction.pain_points,
-        objections: extraction.objections,
-        requests: extraction.requests,
-        quotes: extraction.quotes,
-        urgency: extraction.urgency,
-        likely_segment: extraction.likely_segment,
-        confidence: extraction.confidence,
-      });
-      if (!res.ok) {
-        toast.error(res.error);
-        return;
+      try {
+        const res = await fetch(
+          `/api/workspace/${workspaceId}/signal-analyses/confirm`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              signal_id: signalId,
+              confirmed_summary: extraction.summary,
+              founder_notes: founderNotes || undefined,
+              pain_points: extraction.pain_points,
+              objections: extraction.objections,
+              requests: extraction.requests,
+              quotes: extraction.quotes,
+              urgency: extraction.urgency,
+              likely_segment: extraction.likely_segment,
+              confidence: extraction.confidence,
+            }),
+          },
+        );
+        const body = (await res.json()) as
+          | { success: true; data: { embedding_status: string } }
+          | { success: false; error: string; message?: string };
+
+        if (!res.ok || !body.success) {
+          toast.error(
+            ("message" in body && body.message) ||
+              ("error" in body && body.error) ||
+              "Save failed.",
+          );
+          return;
+        }
+
+        // Embedding is queued via `after()` on the server — recall for this
+        // memory will warm up in a moment. Leave the panel empty for now;
+        // a future "recall after save" round-trip can populate it.
+        setSimilar([]);
+        setStep("confirmed");
+        toast.success("Memory saved. Embedding indexing queued.");
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Save failed.");
       }
-      setSimilar(res.similar);
-      setStep("confirmed");
-      toast.success("Memory saved. Semantic recall indexed.");
     });
   }
 

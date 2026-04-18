@@ -42,8 +42,12 @@ export default async function WorkspacesPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {workspaces.map((w) => (
-            <Link key={w.id} href={`/w/${w.id}`} className="group">
-              <Card className="h-full transition-all hover:shadow-md hover:border-ink-200">
+            <Link
+              key={w.id}
+              href={`/w/${w.id}`}
+              className="group rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Card className="dalil-lift h-full">
                 <CardHeader>
                   <div className="flex items-start justify-between gap-3">
                     <CardTitle className="font-display text-xl leading-tight">

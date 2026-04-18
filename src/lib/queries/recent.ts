@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { isSchemaMissingError } from "@/lib/queries/health";
+import { demoRecentActivity } from "@/lib/data/demo";
 
 export type RecentEntry = {
   kind: "signal" | "decision" | "outcome";
@@ -20,22 +21,28 @@ export type RecentEntry = {
  * Returns a mix of signals, decisions, and outcomes sorted newest-first.
  */
 export async function listRecentActivity(limit = 6): Promise<RecentEntry[]> {
-  const sb = db();
   const sampleLimit = Math.max(limit * 2, 6);
-
   try {
-    return await fetchRecent(sb, sampleLimit, limit);
+    const result = await fetchRecent(sampleLimit, limit);
+    if (result.length === 0) return demoRecentActivity(limit);
+    return result;
   } catch (e) {
-    if (isSchemaMissingError(e)) return [];
-    throw e;
+    if (isSchemaMissingError(e)) return demoRecentActivity(limit);
+    if (process.env.NODE_ENV !== "production") {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[demo-fallback] listRecentActivity: ${e instanceof Error ? e.message : e}`,
+      );
+    }
+    return demoRecentActivity(limit);
   }
 }
 
 async function fetchRecent(
-  sb: ReturnType<typeof db>,
   sampleLimit: number,
   limit: number,
 ): Promise<RecentEntry[]> {
+  const sb = db();
   const [signals, decisions, outcomes] = await Promise.all([
     sb
       .from("signals")
@@ -72,7 +79,8 @@ async function fetchRecent(
 
   for (const s of signals.data ?? []) {
     const wsName =
-      (s as { workspaces?: { name?: string | null } | null }).workspaces?.name ?? null;
+      (s as { workspaces?: { name?: string | null } | null }).workspaces?.name ??
+      null;
     const rawA = (s as { signal_analyses?: unknown }).signal_analyses;
     const a = Array.isArray(rawA) ? rawA[0] : rawA;
     const summary =
@@ -86,16 +94,17 @@ async function fetchRecent(
       workspace_name: wsName,
       title: s.title ?? "Untitled signal",
       body: summary,
-      quote:
-        (a as { quotes?: string[] | null })?.quotes?.[0] ?? null,
-      segment: (a as { likely_segment?: string | null })?.likely_segment ?? null,
+      quote: (a as { quotes?: string[] | null })?.quotes?.[0] ?? null,
+      segment:
+        (a as { likely_segment?: string | null })?.likely_segment ?? null,
       when: s.created_at,
     });
   }
 
   for (const d of decisions.data ?? []) {
     const wsName =
-      (d as { workspaces?: { name?: string | null } | null }).workspaces?.name ?? null;
+      (d as { workspaces?: { name?: string | null } | null }).workspaces?.name ??
+      null;
     entries.push({
       kind: "decision",
       id: d.id,
@@ -110,7 +119,15 @@ async function fetchRecent(
   }
 
   for (const o of outcomes.data ?? []) {
-    const decRef = (o as { decisions?: { workspace_id?: string; title?: string | null; workspaces?: { name?: string | null } | null } | null }).decisions;
+    const decRef = (
+      o as {
+        decisions?: {
+          workspace_id?: string;
+          title?: string | null;
+          workspaces?: { name?: string | null } | null;
+        } | null;
+      }
+    ).decisions;
     if (!decRef?.workspace_id) continue;
     entries.push({
       kind: "outcome",

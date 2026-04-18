@@ -18,7 +18,10 @@ import {
 import { getWorkspace } from "@/lib/queries/workspaces";
 import { listSignalsForWorkspace } from "@/lib/queries/signals";
 import { listDecisionsForWorkspace } from "@/lib/queries/decisions";
-import { rollupWorkspace, type Rollup } from "@/lib/ai/rollup";
+import {
+  rollupWorkspace,
+  type Rollup,
+} from "@/lib/ai/workspace-rollup";
 
 export const revalidate = 0;
 
@@ -104,12 +107,12 @@ export default async function WorkspaceDashboard(
           <RollupPanels
             workspaceId={id}
             memories={confirmedMemories.map((a) => ({
-              summary: a.confirmed_summary ?? a.ai_summary ?? "",
-              segment: a.likely_segment,
+              confirmed_summary: a.confirmed_summary ?? a.ai_summary ?? "",
+              likely_segment: a.likely_segment,
               pain_points: a.pain_points,
               objections: a.objections,
+              requests: a.requests,
               quotes: a.quotes,
-              created_at: a.created_at,
             }))}
           />
         </Suspense>
@@ -171,12 +174,12 @@ async function RollupPanels({
 }: {
   workspaceId: string;
   memories: Array<{
-    summary: string;
-    segment: string | null;
+    confirmed_summary: string | null;
+    likely_segment: string | null;
     pain_points: string[] | null;
     objections: string[] | null;
+    requests: string[] | null;
     quotes: string[] | null;
-    created_at: string;
   }>;
 }) {
   if (memories.length === 0) {
@@ -228,9 +231,9 @@ async function RollupPanels({
             <CardTitle className="font-display text-lg">
               Recurring themes
             </CardTitle>
-            {rollup?.strongest_segment && (
+            {rollup?.most_likely_segment && (
               <Badge variant="outline" className="shrink-0 font-normal">
-                Top segment · {rollup.strongest_segment}
+                Top segment · {rollup.most_likely_segment}
               </Badge>
             )}
           </div>
@@ -247,35 +250,23 @@ async function RollupPanels({
               Not enough data for themes yet.
             </p>
           ) : (
-            rollup?.recurring_themes.map((t) => (
+            rollup?.recurring_themes.map((theme) => (
               <div
-                key={t.label}
-                className="flex items-center justify-between rounded-md border border-border p-3"
+                key={theme}
+                className="rounded-md border border-border p-3 text-sm"
               >
-                <div>
-                  <p className="text-sm font-medium">{t.label}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {t.mentions} mention{t.mentions === 1 ? "" : "s"} across{" "}
-                    {t.signals} signal{t.signals === 1 ? "" : "s"}
-                  </p>
-                </div>
-                <Badge
-                  variant={t.trend === "rising" ? "default" : "secondary"}
-                  className="capitalize"
-                >
-                  {t.trend}
-                </Badge>
+                {theme}
               </div>
             ))
           )}
 
-          {rollup?.top_objections && rollup.top_objections.length > 0 && (
+          {rollup?.strongest_objections && rollup.strongest_objections.length > 0 && (
             <div className="pt-2">
               <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Top objections
+                Strongest objections
               </p>
               <div className="flex flex-wrap gap-1.5">
-                {rollup.top_objections.map((o) => (
+                {rollup.strongest_objections.map((o) => (
                   <Badge key={o} variant="outline" className="font-normal">
                     {o}
                   </Badge>
@@ -307,16 +298,16 @@ async function RollupPanels({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {!rollup?.next_tests || rollup.next_tests.length === 0 ? (
+          {!rollup?.suggested_next_tests ||
+          rollup.suggested_next_tests.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               Capture more memories or log a few decisions and Dalil will
               propose the sharpest next experiment.
             </p>
           ) : (
-            rollup.next_tests.map((t, i) => (
-              <div key={i} className="rounded-md border border-border p-3">
-                <p className="text-sm font-medium">{t.title}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{t.why}</p>
+            rollup.suggested_next_tests.map((t, i) => (
+              <div key={i} className="rounded-md border border-border p-3 text-sm">
+                {t}
               </div>
             ))
           )}
