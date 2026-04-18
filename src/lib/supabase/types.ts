@@ -119,10 +119,13 @@ export type Database = {
       ideas: {
         Row: {
           id: string;
+          owner: string | null;
+          chat_transcript_summary: string | null;
           transcript_summary: string | null;
           approved_idea: string | null;
           audience: string | null;
           problem_statement: string | null;
+          convert_to_workspace_flag: boolean | null;
           converted_workspace_id: string | null;
           created_at: string;
         };
