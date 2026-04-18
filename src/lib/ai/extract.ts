@@ -1,77 +1,82 @@
 import { z } from "zod";
-import { getAnthropic, EXTRACTION_MODEL } from "./anthropic";
+import { Type } from "@google/genai";
+import { getGemini, EXTRACTION_MODEL } from "./gemini";
 
 /**
- * Claude-powered signal extraction.
+ * Gemini-powered signal extraction.
  *
  * Stage 1 of the Dalil AI pipeline: take raw customer text (a call
  * transcript, rough notes, a DM thread) and return a structured JSON
  * object with the founder-facing fields we care about.
  *
- * We force Claude into `tool_use` with a strict `input_schema` so the model
- * output validates cleanly instead of being free-form text.
+ * We use `responseSchema` to force strict JSON output so the result
+ * validates cleanly against our zod schema.
  */
 
 export const ExtractionSchema = z.object({
-  summary: z
-    .string()
-    .describe("One-sentence summary of the signal, founder-readable."),
-  pain_points: z
-    .array(z.string())
-    .describe("Concrete pains named or implied by the customer."),
-  objections: z
-    .array(z.string())
-    .describe("Reasons the customer said no, or would say no."),
-  requests: z
-    .array(z.string())
-    .describe("What the customer explicitly asked for."),
-  urgency: z
-    .enum(["low", "medium", "high"])
-    .describe("How urgent this pain feels to the customer."),
-  likely_segment: z
-    .string()
-    .describe(
-      "Best-guess customer segment (e.g. 'Campus Muslim student', 'Halal restaurant operator').",
-    ),
-  quotes: z
-    .array(z.string())
-    .describe(
-      "Exact verbatim quotes worth remembering. Keep the customer's voice.",
-    ),
-  confidence: z
-    .enum(["low", "medium", "high"])
-    .describe("How confident you are in this extraction."),
+  summary: z.string(),
+  pain_points: z.array(z.string()),
+  objections: z.array(z.string()),
+  requests: z.array(z.string()),
+  urgency: z.enum(["low", "medium", "high"]),
+  likely_segment: z.string(),
+  quotes: z.array(z.string()),
+  confidence: z.enum(["low", "medium", "high"]),
 });
 
 export type Extraction = z.infer<typeof ExtractionSchema>;
 
-import type Anthropic from "@anthropic-ai/sdk";
-
-const EXTRACTION_TOOL: Anthropic.Tool = {
-  name: "record_signal_extraction",
-  description:
-    "Record the structured interpretation of a customer signal so Dalil can index it for semantic recall.",
-  input_schema: {
-    type: "object",
-    required: [
-      "summary",
-      "pain_points",
-      "objections",
-      "requests",
-      "urgency",
-      "likely_segment",
-      "quotes",
-      "confidence",
-    ],
-    properties: {
-      summary: { type: "string" },
-      pain_points: { type: "array", items: { type: "string" } },
-      objections: { type: "array", items: { type: "string" } },
-      requests: { type: "array", items: { type: "string" } },
-      urgency: { type: "string", enum: ["low", "medium", "high"] },
-      likely_segment: { type: "string" },
-      quotes: { type: "array", items: { type: "string" } },
-      confidence: { type: "string", enum: ["low", "medium", "high"] },
+const RESPONSE_SCHEMA = {
+  type: Type.OBJECT,
+  required: [
+    "summary",
+    "pain_points",
+    "objections",
+    "requests",
+    "urgency",
+    "likely_segment",
+    "quotes",
+    "confidence",
+  ],
+  properties: {
+    summary: {
+      type: Type.STRING,
+      description: "One-sentence summary of the signal, founder-readable.",
+    },
+    pain_points: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description: "Concrete pains named or implied by the customer.",
+    },
+    objections: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description: "Reasons the customer said no, or would say no.",
+    },
+    requests: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description: "What the customer explicitly asked for.",
+    },
+    urgency: {
+      type: Type.STRING,
+      enum: ["low", "medium", "high"],
+      description: "How urgent this pain feels to the customer.",
+    },
+    likely_segment: {
+      type: Type.STRING,
+      description:
+        "Best-guess narrow customer segment (e.g. 'Campus Muslim student').",
+    },
+    quotes: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description: "Exact verbatim quotes worth remembering.",
+    },
+    confidence: {
+      type: Type.STRING,
+      enum: ["low", "medium", "high"],
+      description: "How confident you are in this extraction.",
     },
   },
 };
@@ -80,45 +85,59 @@ const SYSTEM_PROMPT = `You are Dalil's extraction engine. Your job is to turn ra
 
 Style rules:
 - Be conservative. If something isn't clearly stated, don't invent it.
-- Keep the customer's voice in quotes. Lightly clean filler words only if the sentence is unreadable.
+- Keep the customer's voice in quotes. Lightly clean filler words only if a sentence is unreadable.
 - Pain points = real problems named or implied, not vibes. Prefer specific over abstract.
 - Objections = things that would make this person say no.
 - Requests = what they explicitly asked for.
 - Confidence should reflect how much raw data you have. One short note → at most "medium".
 - Segment should be the narrowest honest description (e.g. "Campus Muslim student" > "Student").
 
-Respond only through the record_signal_extraction tool.`;
+Return only the structured JSON object.`;
 
 export async function extractSignal(rawText: string): Promise<Extraction> {
-  const client = getAnthropic();
-
-  const res = await client.messages.create({
+  const client = getGemini();
+  const response = await client.models.generateContent({
     model: EXTRACTION_MODEL,
-    max_tokens: 2048,
-    system: SYSTEM_PROMPT,
-    tools: [EXTRACTION_TOOL],
-    tool_choice: { type: "tool", name: EXTRACTION_TOOL.name },
-    messages: [
+    contents: [
       {
         role: "user",
-        content: `Extract structure from this signal. Return only the tool call.\n\n<signal>\n${rawText.trim()}\n</signal>`,
+        parts: [
+          {
+            text: `Extract structure from this signal.\n\n<signal>\n${rawText.trim()}\n</signal>`,
+          },
+        ],
       },
     ],
+    config: {
+      systemInstruction: SYSTEM_PROMPT,
+      temperature: 0.2,
+      responseMimeType: "application/json",
+      responseSchema: RESPONSE_SCHEMA,
+      maxOutputTokens: 2048,
+    },
   });
 
-  const toolUse = res.content.find((block) => block.type === "tool_use");
-  if (!toolUse || toolUse.type !== "tool_use") {
+  const text = response.text;
+  if (!text) {
     throw new Error(
-      "Claude did not return a tool_use block. Try shortening the input or retrying.",
+      "Gemini returned no text. Try shortening the input or retrying.",
     );
   }
 
-  const parsed = ExtractionSchema.safeParse(toolUse.input);
-  if (!parsed.success) {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch (e) {
     throw new Error(
-      `Claude returned invalid extraction shape: ${parsed.error.message}`,
+      `Gemini returned non-JSON text: ${e instanceof Error ? e.message : e}`,
     );
   }
 
-  return parsed.data;
+  const validated = ExtractionSchema.safeParse(parsed);
+  if (!validated.success) {
+    throw new Error(
+      `Extraction shape invalid: ${validated.error.message}`,
+    );
+  }
+  return validated.data;
 }

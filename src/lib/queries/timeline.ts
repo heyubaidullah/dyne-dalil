@@ -1,5 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
+import { isSchemaMissingError } from "@/lib/queries/health";
 
 export type TimelineEntry =
   | {
@@ -56,9 +57,12 @@ export async function listTimelineForWorkspace(
       .eq("decisions.workspace_id", workspaceId),
   ]);
 
-  if (sErr) throw sErr;
-  if (dErr) throw dErr;
-  if (oErr) throw oErr;
+  for (const err of [sErr, dErr, oErr]) {
+    if (err) {
+      if (isSchemaMissingError(err)) return [];
+      throw err;
+    }
+  }
 
   const entries: TimelineEntry[] = [];
 

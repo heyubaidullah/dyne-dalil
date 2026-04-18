@@ -1,5 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
+import { isSchemaMissingError } from "@/lib/queries/health";
 
 export type DecisionRow = {
   id: string;
@@ -41,7 +42,10 @@ export async function listDecisionsForWorkspace(
     .eq("workspace_id", workspaceId)
     .order("created_at", { ascending: false });
 
-  if (error) throw error;
+  if (error) {
+    if (isSchemaMissingError(error)) return [];
+    throw error;
+  }
   if (!decisions || decisions.length === 0) return [];
 
   const ids = decisions.map((d) => d.id);

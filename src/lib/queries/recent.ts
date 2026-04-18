@@ -1,5 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
+import { isSchemaMissingError } from "@/lib/queries/health";
 
 export type RecentEntry = {
   kind: "signal" | "decision" | "outcome";
@@ -22,6 +23,19 @@ export async function listRecentActivity(limit = 6): Promise<RecentEntry[]> {
   const sb = db();
   const sampleLimit = Math.max(limit * 2, 6);
 
+  try {
+    return await fetchRecent(sb, sampleLimit, limit);
+  } catch (e) {
+    if (isSchemaMissingError(e)) return [];
+    throw e;
+  }
+}
+
+async function fetchRecent(
+  sb: ReturnType<typeof db>,
+  sampleLimit: number,
+  limit: number,
+): Promise<RecentEntry[]> {
   const [signals, decisions, outcomes] = await Promise.all([
     sb
       .from("signals")
@@ -49,6 +63,10 @@ export async function listRecentActivity(limit = 6): Promise<RecentEntry[]> {
       .order("updated_at", { ascending: false })
       .limit(sampleLimit),
   ]);
+
+  for (const err of [signals.error, decisions.error, outcomes.error]) {
+    if (err) throw err;
+  }
 
   const entries: RecentEntry[] = [];
 

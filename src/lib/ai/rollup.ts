@@ -1,8 +1,9 @@
 import { z } from "zod";
-import { getAnthropic, EXTRACTION_MODEL } from "./anthropic";
+import { Type } from "@google/genai";
+import { getGemini, ROLLUP_MODEL } from "./gemini";
 
 /**
- * Claude-powered workspace rollup.
+ * Gemini-powered workspace rollup.
  *
  * Takes every confirmed memory for a workspace and distills them into
  * recurring themes, top objections, strongest segment, and suggested next
@@ -36,47 +37,40 @@ export const RollupSchema = z.object({
 
 export type Rollup = z.infer<typeof RollupSchema>;
 
-import type Anthropic from "@anthropic-ai/sdk";
-
-const ROLLUP_TOOL: Anthropic.Tool = {
-  name: "record_workspace_rollup",
-  description:
-    "Aggregate a workspace's confirmed memories into recurring themes, top objections, strongest segment, contradictions, and suggested next tests.",
-  input_schema: {
-    type: "object",
-    required: [
-      "recurring_themes",
-      "top_objections",
-      "strongest_segment",
-      "contradictions",
-      "next_tests",
-    ],
-    properties: {
-      recurring_themes: {
-        type: "array",
-        items: {
-          type: "object",
-          required: ["label", "mentions", "signals", "trend"],
-          properties: {
-            label: { type: "string" },
-            mentions: { type: "integer", minimum: 1 },
-            signals: { type: "integer", minimum: 1 },
-            trend: { type: "string", enum: ["rising", "stable", "falling"] },
-          },
+const RESPONSE_SCHEMA = {
+  type: Type.OBJECT,
+  required: [
+    "recurring_themes",
+    "top_objections",
+    "strongest_segment",
+    "contradictions",
+    "next_tests",
+  ],
+  properties: {
+    recurring_themes: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        required: ["label", "mentions", "signals", "trend"],
+        properties: {
+          label: { type: Type.STRING },
+          mentions: { type: Type.INTEGER },
+          signals: { type: Type.INTEGER },
+          trend: { type: Type.STRING, enum: ["rising", "stable", "falling"] },
         },
       },
-      top_objections: { type: "array", items: { type: "string" } },
-      strongest_segment: { type: "string" },
-      contradictions: { type: "array", items: { type: "string" } },
-      next_tests: {
-        type: "array",
-        items: {
-          type: "object",
-          required: ["title", "why"],
-          properties: {
-            title: { type: "string" },
-            why: { type: "string" },
-          },
+    },
+    top_objections: { type: Type.ARRAY, items: { type: Type.STRING } },
+    strongest_segment: { type: Type.STRING },
+    contradictions: { type: Type.ARRAY, items: { type: Type.STRING } },
+    next_tests: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        required: ["title", "why"],
+        properties: {
+          title: { type: Type.STRING },
+          why: { type: Type.STRING },
         },
       },
     },
@@ -93,7 +87,7 @@ Style rules:
 - contradictions = where memories disagree (e.g., one says "fees don't matter", another says "fees are the #1 blocker").
 - If the input is thin, return empty arrays — do not invent.
 
-Respond only through the record_workspace_rollup tool.`;
+Return only the structured JSON object.`;
 
 export async function rollupWorkspace(
   memories: Array<{
@@ -139,29 +133,37 @@ export async function rollupWorkspace(
     })
     .join("\n\n");
 
-  const client = getAnthropic();
-  const res = await client.messages.create({
-    model: EXTRACTION_MODEL,
-    max_tokens: 2048,
-    system: SYSTEM_PROMPT,
-    tools: [ROLLUP_TOOL],
-    tool_choice: { type: "tool", name: ROLLUP_TOOL.name },
-    messages: [
+  const client = getGemini();
+  const response = await client.models.generateContent({
+    model: ROLLUP_MODEL,
+    contents: [
       {
         role: "user",
-        content: `Aggregate these ${memories.length} memories.\n\n${body}`,
+        parts: [{ text: `Aggregate these ${memories.length} memories.\n\n${body}` }],
       },
     ],
+    config: {
+      systemInstruction: SYSTEM_PROMPT,
+      temperature: 0.3,
+      responseMimeType: "application/json",
+      responseSchema: RESPONSE_SCHEMA,
+      maxOutputTokens: 2048,
+    },
   });
 
-  const toolUse = res.content.find((b) => b.type === "tool_use");
-  if (!toolUse || toolUse.type !== "tool_use") {
-    throw new Error("Claude did not return a rollup tool_use block.");
+  const text = response.text;
+  if (!text) throw new Error("Gemini returned no rollup text.");
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch (e) {
+    throw new Error(`Rollup JSON parse failed: ${e instanceof Error ? e.message : e}`);
   }
 
-  const parsed = RollupSchema.safeParse(toolUse.input);
-  if (!parsed.success) {
-    throw new Error(`Invalid rollup shape: ${parsed.error.message}`);
+  const validated = RollupSchema.safeParse(parsed);
+  if (!validated.success) {
+    throw new Error(`Invalid rollup shape: ${validated.error.message}`);
   }
-  return parsed.data;
+  return validated.data;
 }

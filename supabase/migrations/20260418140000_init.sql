@@ -45,7 +45,7 @@ create table if not exists signal_analyses (
   likely_segment text,
   quotes text[],
   confidence text,
-  embedding vector(1536),
+  embedding vector(768),
   created_at timestamptz not null default now(),
   confirmed_at timestamptz
 );
@@ -63,7 +63,7 @@ create table if not exists decisions (
   category text,
   rationale text,
   expected_outcome text,
-  embedding vector(1536),
+  embedding vector(768),
   created_at timestamptz not null default now()
 );
 
@@ -114,7 +114,7 @@ create index if not exists ideas_owner_idx on ideas(owner);
 
 -- ---------- Semantic recall RPCs ----------
 create or replace function match_signal_analyses(
-  query_embedding vector(1536),
+  query_embedding vector(768),
   workspace_filter uuid,
   match_count int default 5
 )
@@ -140,7 +140,7 @@ language sql stable as $$
 $$;
 
 create or replace function match_decisions(
-  query_embedding vector(1536),
+  query_embedding vector(768),
   workspace_filter uuid,
   match_count int default 5
 )

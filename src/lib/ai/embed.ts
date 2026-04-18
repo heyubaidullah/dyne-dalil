@@ -1,9 +1,9 @@
-import { getOpenAI, EMBEDDING_MODEL, EMBEDDING_DIMENSIONS } from "./openai";
+import { getGemini, EMBEDDING_MODEL, EMBEDDING_DIMENSIONS } from "./gemini";
 
 /**
  * Generate an embedding vector for a single piece of text.
- * Uses OpenAI text-embedding-3-small (1536 dims) — matches the vector
- * column size on signal_analyses / decisions.
+ * Uses Gemini `text-embedding-004` (768 dims) — matches the vector column
+ * size on signal_analyses / decisions after the 768-dim migration.
  */
 export async function embedText(text: string): Promise<number[]> {
   const trimmed = text.trim();
@@ -11,16 +11,16 @@ export async function embedText(text: string): Promise<number[]> {
     throw new Error("embedText called with empty text");
   }
 
-  const client = getOpenAI();
-  const res = await client.embeddings.create({
+  const client = getGemini();
+  const res = await client.models.embedContent({
     model: EMBEDDING_MODEL,
-    input: trimmed,
+    contents: [trimmed],
   });
 
-  const vec = res.data[0]?.embedding;
+  const vec = res.embeddings?.[0]?.values;
   if (!vec || vec.length !== EMBEDDING_DIMENSIONS) {
     throw new Error(
-      `Unexpected embedding shape: got ${vec?.length ?? 0} dims, expected ${EMBEDDING_DIMENSIONS}`,
+      `Unexpected embedding shape from Gemini: got ${vec?.length ?? 0} dims, expected ${EMBEDDING_DIMENSIONS}`,
     );
   }
 

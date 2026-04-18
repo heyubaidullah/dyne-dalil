@@ -1,5 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
+import { isSchemaMissingError } from "@/lib/queries/health";
 
 export type WorkspaceRow = {
   id: string;
@@ -22,7 +23,10 @@ export async function listWorkspaceSummaries(): Promise<WorkspaceSummary[]> {
     .select("id, name, description, created_at")
     .order("created_at", { ascending: false });
 
-  if (error) throw error;
+  if (error) {
+    if (isSchemaMissingError(error)) return [];
+    throw error;
+  }
   if (!workspaces || workspaces.length === 0) return [];
 
   const ids = workspaces.map((w) => w.id);
@@ -81,7 +85,10 @@ export async function getWorkspace(id: string): Promise<WorkspaceRow | null> {
     .select("id, name, description, created_at")
     .eq("id", id)
     .maybeSingle();
-  if (error) throw error;
+  if (error) {
+    if (isSchemaMissingError(error)) return null;
+    throw error;
+  }
   return data ?? null;
 }
 
@@ -92,25 +99,35 @@ export async function globalStats(): Promise<{
   similar_recalls: number;
 }> {
   const sb = db();
-  const [{ count: signals }, { count: decisions }, { count: outcomes }] =
-    await Promise.all([
+  try {
+    const [
+      { count: signals },
+      { count: decisions },
+      { count: outcomes },
+    ] = await Promise.all([
       sb.from("signals").select("*", { count: "exact", head: true }),
       sb.from("decisions").select("*", { count: "exact", head: true }),
       sb.from("outcomes").select("*", { count: "exact", head: true }),
     ]);
 
-  // `similar_recalls` is not yet tracked as an event, so we approximate it
-  // as "memories that are indexed and therefore recallable".
-  const { count: memoriesIndexed } = await sb
-    .from("signal_analyses")
-    .select("*", { count: "exact", head: true })
-    .not("embedding", "is", null)
-    .not("confirmed_at", "is", null);
+    // `similar_recalls` is not yet tracked as an event, so we approximate it
+    // as "memories that are indexed and therefore recallable".
+    const { count: memoriesIndexed } = await sb
+      .from("signal_analyses")
+      .select("*", { count: "exact", head: true })
+      .not("embedding", "is", null)
+      .not("confirmed_at", "is", null);
 
-  return {
-    signals: signals ?? 0,
-    decisions: decisions ?? 0,
-    outcomes: outcomes ?? 0,
-    similar_recalls: memoriesIndexed ?? 0,
-  };
+    return {
+      signals: signals ?? 0,
+      decisions: decisions ?? 0,
+      outcomes: outcomes ?? 0,
+      similar_recalls: memoriesIndexed ?? 0,
+    };
+  } catch (e) {
+    if (isSchemaMissingError(e)) {
+      return { signals: 0, decisions: 0, outcomes: 0, similar_recalls: 0 };
+    }
+    throw e;
+  }
 }

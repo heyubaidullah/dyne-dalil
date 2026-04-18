@@ -23,7 +23,7 @@ export default function SettingsPage() {
             <p className="text-sm text-muted-foreground">
               Choose which LLM handles raw signal → structured memory extraction.
             </p>
-            <Button variant="outline">Claude 4.7 Sonnet (default)</Button>
+            <Button variant="outline">Gemini 2.5 Flash (default)</Button>
           </CardContent>
         </Card>
         <Card>
@@ -37,7 +37,7 @@ export default function SettingsPage() {
             </p>
             <div className="space-y-2">
               <Label htmlFor="emb">Model</Label>
-              <Input id="emb" defaultValue="text-embedding-3-small" disabled />
+              <Input id="emb" defaultValue="text-embedding-004 (Gemini)" disabled />
             </div>
           </CardContent>
         </Card>

@@ -6,14 +6,21 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Plus, Inbox } from "lucide-react";
 import { listWorkspaceSummaries } from "@/lib/queries/workspaces";
+import { schemaStatus } from "@/lib/queries/health";
+import { SchemaBanner } from "@/components/layout/schema-banner";
 
 export const revalidate = 0;
 
 export default async function WorkspacesPage() {
-  const workspaces = await listWorkspaceSummaries();
+  const [workspaces, status] = await Promise.all([
+    listWorkspaceSummaries(),
+    schemaStatus(),
+  ]);
 
   return (
-    <PageStub
+    <>
+      {!status.ready && <SchemaBanner message={status.error} />}
+      <PageStub
       eyebrow="Workspaces"
       title="Every founder memory, scoped."
       description="A workspace is one product, one market, one set of customers. Pick one to dive in, or start a new one from scratch."
@@ -72,6 +79,7 @@ export default async function WorkspacesPage() {
         </div>
       )}
     </PageStub>
+    </>
   );
 }
 

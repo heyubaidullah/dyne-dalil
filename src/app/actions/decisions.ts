@@ -53,7 +53,7 @@ export async function createDecisionAction(input: {
   try {
     embedding = await embedText(embeddingText);
   } catch {
-    // If OpenAI isn't available, still allow the decision — embedding can be
+    // If Gemini isn't available, still allow the decision — embedding can be
     // back-filled later. Recall for this decision just won't work yet.
     embedding = null;
   }

@@ -1,5 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
+import { isSchemaMissingError } from "@/lib/queries/health";
 
 export type SignalRow = {
   id: string;
@@ -46,7 +47,10 @@ export async function listSignalsForWorkspace(
     .eq("workspace_id", workspaceId)
     .order("created_at", { ascending: false });
 
-  if (error) throw error;
+  if (error) {
+    if (isSchemaMissingError(error)) return [];
+    throw error;
+  }
   if (!data) return [];
 
   return data.map((row) => {

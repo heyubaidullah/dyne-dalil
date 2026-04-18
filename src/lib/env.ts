@@ -11,17 +11,15 @@ const schema = z.object({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1).optional(),
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
-  ANTHROPIC_API_KEY: z.string().min(1).optional(),
-  OPENAI_API_KEY: z.string().min(1).optional(),
   GEMINI_API_KEY: z.string().min(1).optional(),
 });
 
 type EnvShape = z.infer<typeof schema>;
 
 /**
- * Treat empty strings in .env as unset — otherwise `ANTHROPIC_API_KEY=`
- * (with no value) would trip a `.min(1)` check and cascade the whole parse
- * into a "missing" state for every other var.
+ * Treat empty strings in .env as unset — otherwise a bare `GEMINI_API_KEY=`
+ * would trip a `.min(1)` check and cascade the whole parse into a "missing"
+ * state for every other var.
  */
 const emptyToUndefined = (v: string | undefined) =>
   v !== undefined && v.trim().length === 0 ? undefined : v;
@@ -33,8 +31,6 @@ const rawInput: EnvShape = {
   ),
   NEXT_PUBLIC_APP_URL: emptyToUndefined(process.env.NEXT_PUBLIC_APP_URL),
   SUPABASE_SERVICE_ROLE_KEY: emptyToUndefined(process.env.SUPABASE_SERVICE_ROLE_KEY),
-  ANTHROPIC_API_KEY: emptyToUndefined(process.env.ANTHROPIC_API_KEY),
-  OPENAI_API_KEY: emptyToUndefined(process.env.OPENAI_API_KEY),
   GEMINI_API_KEY: emptyToUndefined(process.env.GEMINI_API_KEY),
 };
 
