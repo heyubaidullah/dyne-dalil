@@ -12,7 +12,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Sparkles,
   ArrowUp,
@@ -92,7 +91,7 @@ export function StartModal({
   const [draft, setDraft] = useState("");
   const [saving, startSave] = useTransition();
   const [offeredSave, setOfferedSave] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
   const seededRef = useRef<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -116,9 +115,12 @@ export function StartModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, seedText]);
 
+  // Auto-scroll the chat container to the bottom whenever turns or the
+  // streaming-placeholder state changes.
   useEffect(() => {
-    if (!scrollRef.current) return;
-    scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    const el = chatContainerRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
   }, [turns, streaming]);
 
   async function send(text: string) {
@@ -317,9 +319,12 @@ export function StartModal({
           </button>
         </header>
 
-        <div className="grid flex-1 min-h-0 grid-cols-1 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
           <section className="flex min-h-0 flex-col border-r border-border">
-            <ScrollArea className="flex-1" ref={scrollRef as never}>
+            <div
+              ref={chatContainerRef}
+              className="min-h-0 flex-1 overflow-y-auto overscroll-contain scroll-smooth"
+            >
               <div className="flex flex-col gap-4 p-6">
                 {turns.length === 1 && (
                   <div className="flex flex-wrap gap-2 pb-2">
@@ -350,7 +355,7 @@ export function StartModal({
                   );
                 })}
               </div>
-            </ScrollArea>
+            </div>
 
             <form
               onSubmit={handleSubmit}
@@ -391,7 +396,7 @@ export function StartModal({
           </section>
 
           <aside className="flex min-h-0 flex-col bg-secondary/40">
-            <ScrollArea className="flex-1">
+            <div className="min-h-0 flex-1 overflow-y-auto">
               <div className="space-y-5 p-6">
                 <div>
                   <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -472,7 +477,7 @@ export function StartModal({
                   </p>
                 </div>
               </div>
-            </ScrollArea>
+            </div>
 
             <div className="space-y-2 border-t border-border bg-card/60 p-4">
               <Button
