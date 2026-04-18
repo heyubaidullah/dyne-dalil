@@ -1,37 +1,22 @@
 import Link from "next/link";
+import { formatDistanceToNow } from "@/lib/format";
 import { PageStub } from "@/components/layout/page-stub";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Plus } from "lucide-react";
+import { ArrowRight, Plus, Inbox } from "lucide-react";
+import { listWorkspaceSummaries } from "@/lib/queries/workspaces";
 
-const DEMO_WORKSPACES = [
-  {
-    id: "halal-delivery",
-    name: "Halal Delivery 0→1",
-    description:
-      "Pilot halal-only food delivery marketplace — pricing, rider economics, campus demand.",
-    signals: 14,
-    decisions: 6,
-    lastActive: "2 hours ago",
-  },
-  {
-    id: "prayer-time-saas",
-    name: "Prayer-Time SaaS",
-    description:
-      "B2B prayer scheduling for mosque admins and Muslim-run companies.",
-    signals: 8,
-    decisions: 3,
-    lastActive: "yesterday",
-  },
-];
+export const revalidate = 0;
 
-export default function WorkspacesPage() {
+export default async function WorkspacesPage() {
+  const workspaces = await listWorkspaceSummaries();
+
   return (
     <PageStub
       eyebrow="Workspaces"
       title="Every founder memory, scoped."
-      description="A workspace is one product, one market, one set of customers. Pick one to dive in, or start a new one from scratch or from an approved idea."
+      description="A workspace is one product, one market, one set of customers. Pick one to dive in, or start a new one from scratch."
     >
       <div className="mb-6 flex items-center justify-end gap-2">
         <Button asChild variant="outline">
@@ -44,32 +29,80 @@ export default function WorkspacesPage() {
           </Link>
         </Button>
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
-        {DEMO_WORKSPACES.map((w) => (
-          <Link key={w.id} href={`/w/${w.id}`} className="group">
-            <Card className="h-full transition-all hover:shadow-md hover:border-ink-200">
-              <CardHeader>
-                <div className="flex items-start justify-between gap-3">
-                  <CardTitle className="font-display text-xl">
-                    {w.name}
-                  </CardTitle>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">{w.description}</p>
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary">{w.signals} signals</Badge>
-                  <Badge variant="secondary">{w.decisions} decisions</Badge>
-                  <span className="ml-auto text-xs text-muted-foreground">
-                    {w.lastActive}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
-      </div>
+
+      {workspaces.length === 0 ? (
+        <EmptyState />
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
+          {workspaces.map((w) => (
+            <Link key={w.id} href={`/w/${w.id}`} className="group">
+              <Card className="h-full transition-all hover:shadow-md hover:border-ink-200">
+                <CardHeader>
+                  <div className="flex items-start justify-between gap-3">
+                    <CardTitle className="font-display text-xl leading-tight">
+                      {w.name}
+                    </CardTitle>
+                    <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1" />
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {w.description && (
+                    <p className="text-sm text-muted-foreground line-clamp-3">
+                      {w.description}
+                    </p>
+                  )}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="secondary">
+                      {w.signal_count} signal{w.signal_count === 1 ? "" : "s"}
+                    </Badge>
+                    <Badge variant="secondary">
+                      {w.decision_count} decision
+                      {w.decision_count === 1 ? "" : "s"}
+                    </Badge>
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      {w.last_activity
+                        ? formatDistanceToNow(w.last_activity)
+                        : "just created"}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      )}
     </PageStub>
+  );
+}
+
+function EmptyState() {
+  return (
+    <Card className="border-dashed">
+      <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-teal-50 ring-1 ring-teal-200/60">
+          <Inbox className="h-5 w-5 text-teal-700" />
+        </span>
+        <div className="space-y-1">
+          <h3 className="font-display text-lg font-semibold">
+            No workspaces yet.
+          </h3>
+          <p className="max-w-sm text-sm text-muted-foreground">
+            Create your first workspace, then capture a signal from a call,
+            note, or transcript.
+          </p>
+        </div>
+        <div className="flex flex-wrap justify-center gap-2">
+          <Button asChild>
+            <Link href="/workspaces/new">
+              <Plus className="mr-1 h-4 w-4" />
+              New workspace
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/start">Start from an idea</Link>
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

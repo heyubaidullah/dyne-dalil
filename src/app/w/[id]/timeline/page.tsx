@@ -1,98 +1,115 @@
+import { notFound } from "next/navigation";
 import { PageStub } from "@/components/layout/page-stub";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Inbox,
-  Lightbulb,
   GitBranch,
   TrendingUp,
   TrendingDown,
+  Clock,
+  CircleDashed,
 } from "lucide-react";
+import { getWorkspace } from "@/lib/queries/workspaces";
+import { listTimelineForWorkspace, type TimelineEntry } from "@/lib/queries/timeline";
+import { formatDateLong } from "@/lib/format";
 
-const ENTRIES = [
-  {
-    date: "Apr 17, 2026",
-    kind: "outcome" as const,
-    title: "Outcome: late-night delivery pilot → improved conversion 23%",
-    body: "Retention held at 68% vs. 45% baseline. Decision validated.",
-  },
-  {
-    date: "Apr 16, 2026",
-    kind: "signal" as const,
-    title: "Signal: 3 prospects cited 10pm cutoff unprompted",
-    body: "Consistent thread: Muslim students study late and want halal late-night options.",
-  },
-  {
-    date: "Apr 15, 2026",
-    kind: "decision" as const,
-    title: "Decision: extend delivery window to midnight weekends only",
-    body: "Pilot launched with 4 restaurants, monitored rider supply.",
-  },
-  {
-    date: "Apr 12, 2026",
-    kind: "signal" as const,
-    title: "Signal: Br. Khalid interview — payout timing is a #1 pain",
-    body: "Pattern: 3 other restaurant interviews echoed this within the week.",
-  },
-  {
-    date: "Apr 10, 2026",
-    kind: "decision" as const,
-    title: "Decision: launch halal-only, no mixed kitchens",
-    body: "Trust wedge over catalog breadth. Evidence: 7 of 9 interviews.",
-  },
-];
-
-const KIND_META = {
-  signal: { icon: Inbox, color: "text-ink-600", label: "Signal" },
-  decision: { icon: GitBranch, color: "text-teal-700", label: "Decision" },
-  outcome: { icon: TrendingUp, color: "text-gold-600", label: "Outcome" },
-  insight: { icon: Lightbulb, color: "text-gold-600", label: "Insight" },
-  regression: { icon: TrendingDown, color: "text-red-600", label: "Regression" },
-};
+export const revalidate = 0;
 
 export default async function TimelinePage(
   props: PageProps<"/w/[id]/timeline">,
 ) {
-  await props.params;
+  const { id } = await props.params;
+  const [workspace, entries] = await Promise.all([
+    getWorkspace(id),
+    listTimelineForWorkspace(id),
+  ]);
+  if (!workspace) notFound();
 
   return (
     <PageStub
-      eyebrow="Timeline"
+      eyebrow={workspace.name}
       title="The visible chronology of learning."
       description="Signals lead to decisions, decisions produce outcomes, outcomes reshape what you test next. This is where the loop becomes visible."
-      phase="Phase 3"
     >
-      <Card>
-        <CardContent className="pt-6">
-          <ol className="relative space-y-8 border-l-2 border-border pl-6">
-            {ENTRIES.map((e, i) => {
-              const meta = KIND_META[e.kind];
-              const Icon = meta.icon;
-              return (
-                <li key={i} className="relative">
-                  <span className="absolute -left-[31px] top-0 flex h-6 w-6 items-center justify-center rounded-full bg-background ring-2 ring-border">
-                    <Icon className={`h-3.5 w-3.5 ${meta.color}`} />
-                  </span>
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="font-normal">
-                        {meta.label}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">
-                        {e.date}
-                      </span>
-                    </div>
-                    <p className="font-display text-base font-medium leading-snug text-ink-950 dark:text-ink-50">
-                      {e.title}
-                    </p>
-                    <p className="text-sm text-muted-foreground">{e.body}</p>
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
-        </CardContent>
-      </Card>
+      {entries.length === 0 ? (
+        <EmptyTimeline />
+      ) : (
+        <Card>
+          <CardContent className="pt-6">
+            <ol className="relative space-y-8 border-l-2 border-border pl-6">
+              {entries.map((e) => (
+                <TimelineItem key={`${e.kind}-${e.id}`} entry={e} />
+              ))}
+            </ol>
+          </CardContent>
+        </Card>
+      )}
     </PageStub>
+  );
+}
+
+function TimelineItem({ entry }: { entry: TimelineEntry }) {
+  const { Icon, color, label } = iconFor(entry);
+  return (
+    <li className="relative">
+      <span className="absolute -left-[31px] top-0 flex h-6 w-6 items-center justify-center rounded-full bg-background ring-2 ring-border">
+        <Icon className={`h-3.5 w-3.5 ${color}`} />
+      </span>
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="font-normal">
+            {label}
+          </Badge>
+          <span className="text-xs text-muted-foreground">
+            {formatDateLong(entry.date)}
+          </span>
+        </div>
+        <p className="font-display text-base font-medium leading-snug text-ink-950 dark:text-ink-50">
+          {entry.title}
+        </p>
+        {entry.body && (
+          <p className="text-sm text-muted-foreground">{entry.body}</p>
+        )}
+      </div>
+    </li>
+  );
+}
+
+function iconFor(entry: TimelineEntry) {
+  if (entry.kind === "signal") {
+    return { Icon: Inbox, color: "text-ink-600", label: "Signal" };
+  }
+  if (entry.kind === "decision") {
+    return { Icon: GitBranch, color: "text-teal-700", label: "Decision" };
+  }
+  switch (entry.status) {
+    case "improved":
+      return { Icon: TrendingUp, color: "text-gold-600", label: "Outcome · Improved" };
+    case "failed":
+      return { Icon: TrendingDown, color: "text-red-600", label: "Outcome · Failed" };
+    case "inconclusive":
+      return { Icon: CircleDashed, color: "text-ink-500", label: "Outcome · Inconclusive" };
+    default:
+      return { Icon: Clock, color: "text-ink-500", label: "Outcome · Pending" };
+  }
+}
+
+function EmptyTimeline() {
+  return (
+    <Card className="border-dashed">
+      <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-teal-50 ring-1 ring-teal-200/60">
+          <Clock className="h-5 w-5 text-teal-700" />
+        </span>
+        <h3 className="font-display text-lg font-semibold">
+          Nothing on the timeline yet.
+        </h3>
+        <p className="max-w-sm text-sm text-muted-foreground">
+          As you capture signals and log decisions, they land here in order.
+          Mark an outcome to close the loop.
+        </p>
+      </CardContent>
+    </Card>
   );
 }

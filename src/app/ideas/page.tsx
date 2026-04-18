@@ -3,42 +3,15 @@ import { PageStub } from "@/components/layout/page-stub";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Sparkles, ArrowUpRight } from "lucide-react";
+import { Sparkles, ArrowUpRight, Lightbulb } from "lucide-react";
+import { listIdeas } from "@/lib/queries/ideas";
+import { formatDateLong } from "@/lib/format";
 
-const IDEAS = [
-  {
-    id: "halal-delivery",
-    name: "Halal Delivery 0→1",
-    audience: "Muslim college students at large public universities",
-    problem:
-      "Late-night halal delivery is effectively impossible after 10pm on most campuses.",
-    status: "Converted",
-  },
-  {
-    id: "zakat-automation",
-    name: "Zakat Automation for Founders",
-    audience: "Muslim founders with variable annual income",
-    problem:
-      "Calculating zakat over appreciating startup equity and receivables is stressful and manual.",
-    status: "Validated",
-  },
-  {
-    id: "masjid-crm",
-    name: "Masjid CRM",
-    audience: "Masjid board members and event coordinators",
-    problem:
-      "Member data is scattered across WhatsApp groups, spreadsheets, and three different sign-up forms.",
-    status: "Exploring",
-  },
-];
+export const revalidate = 0;
 
-const STATUS_VARIANTS: Record<string, "default" | "secondary" | "outline"> = {
-  Converted: "default",
-  Validated: "secondary",
-  Exploring: "outline",
-};
+export default async function IdeaVaultPage() {
+  const ideas = await listIdeas().catch(() => []);
 
-export default function IdeaVaultPage() {
   return (
     <PageStub
       eyebrow="Idea Vault"
@@ -53,50 +26,102 @@ export default function IdeaVaultPage() {
           </Link>
         </Button>
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
-        {IDEAS.map((idea) => (
-          <Card key={idea.id}>
-            <CardHeader>
-              <div className="flex items-start justify-between gap-2">
-                <CardTitle className="font-display text-lg">
-                  {idea.name}
-                </CardTitle>
-                <Badge variant={STATUS_VARIANTS[idea.status]}>
-                  {idea.status}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <div>
-                <p className="mb-0.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Audience
-                </p>
-                <p>{idea.audience}</p>
-              </div>
-              <div>
-                <p className="mb-0.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Problem
-                </p>
-                <p className="text-muted-foreground">{idea.problem}</p>
-              </div>
-              <div className="flex justify-end pt-1">
-                {idea.status === "Converted" ? (
-                  <Button asChild variant="outline" size="sm">
-                    <Link href={`/w/${idea.id}`}>
-                      Open workspace
-                      <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
-                    </Link>
-                  </Button>
-                ) : (
-                  <Button variant="outline" size="sm">
-                    Convert to workspace
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+
+      {ideas.length === 0 ? (
+        <EmptyIdeas />
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
+          {ideas.map((idea) => {
+            const status = idea.converted_workspace_id
+              ? "Converted"
+              : idea.approved_idea
+                ? "Validated"
+                : "Exploring";
+            const variant: "default" | "secondary" | "outline" =
+              status === "Converted"
+                ? "default"
+                : status === "Validated"
+                  ? "secondary"
+                  : "outline";
+            return (
+              <Card key={idea.id}>
+                <CardHeader>
+                  <div className="flex items-start justify-between gap-2">
+                    <CardTitle className="font-display text-lg leading-tight">
+                      {idea.approved_idea ?? "Untitled idea"}
+                    </CardTitle>
+                    <Badge variant={variant}>{status}</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Saved {formatDateLong(idea.created_at)}
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  {idea.audience && (
+                    <div>
+                      <p className="mb-0.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Audience
+                      </p>
+                      <p>{idea.audience}</p>
+                    </div>
+                  )}
+                  {idea.problem_statement && (
+                    <div>
+                      <p className="mb-0.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Problem
+                      </p>
+                      <p className="text-muted-foreground">
+                        {idea.problem_statement}
+                      </p>
+                    </div>
+                  )}
+                  <div className="flex justify-end pt-1">
+                    {idea.converted_workspace_id ? (
+                      <Button asChild variant="outline" size="sm">
+                        <Link href={`/w/${idea.converted_workspace_id}`}>
+                          Open workspace
+                          <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
+                        </Link>
+                      </Button>
+                    ) : (
+                      <Button asChild variant="outline" size="sm">
+                        <Link href="/workspaces/new">Convert to workspace</Link>
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </PageStub>
+  );
+}
+
+function EmptyIdeas() {
+  return (
+    <Card className="border-dashed">
+      <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-teal-50 ring-1 ring-teal-200/60">
+          <Lightbulb className="h-5 w-5 text-teal-700" />
+        </span>
+        <div className="space-y-1">
+          <h3 className="font-display text-lg font-semibold">
+            No ideas saved yet.
+          </h3>
+          <p className="max-w-sm text-sm text-muted-foreground">
+            Use Dalil Start to sharpen a stage-zero idea. Approved ideas land
+            here for later conversion into a workspace.
+          </p>
+        </div>
+        <Button asChild>
+          <Link href="/start">
+            <Sparkles className="mr-1 h-4 w-4" />
+            Start a new idea
+          </Link>
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

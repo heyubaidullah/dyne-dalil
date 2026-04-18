@@ -14,8 +14,22 @@ import {
   ArrowRight,
   Quote,
 } from "lucide-react";
+import { globalStats } from "@/lib/queries/workspaces";
+import { listRecentActivity } from "@/lib/queries/recent";
+import { formatDistanceToNow } from "@/lib/format";
 
-export default function HomePage() {
+export const revalidate = 60;
+
+export default async function HomePage() {
+  const [stats, recent] = await Promise.all([
+    globalStats().catch(() => ({
+      signals: 0,
+      decisions: 0,
+      outcomes: 0,
+      similar_recalls: 0,
+    })),
+    listRecentActivity(4).catch(() => []),
+  ]);
   return (
     <>
       <section className="relative dalil-gradient-hero">
@@ -58,22 +72,22 @@ export default function HomePage() {
           <Stat
             icon={<Inbox className="h-4 w-4" />}
             label="Signals captured"
-            value="142"
+            value={stats.signals.toString()}
           />
           <Stat
             icon={<CheckCircle2 className="h-4 w-4" />}
             label="Decisions logged"
-            value="38"
+            value={stats.decisions.toString()}
           />
           <Stat
             icon={<Telescope className="h-4 w-4" />}
-            label="Similar recalls"
-            value="96"
+            label="Memories indexed"
+            value={stats.similar_recalls.toString()}
           />
           <Stat
             icon={<LineChart className="h-4 w-4" />}
             label="Outcomes tracked"
-            value="24"
+            value={stats.outcomes.toString()}
           />
         </div>
       </section>
@@ -131,34 +145,31 @@ export default function HomePage() {
             </Button>
           </div>
           <div className="grid gap-4 lg:col-span-3 md:grid-cols-2">
-            <MemoryCard
-              kind="signal"
-              title="Late-night cutoff keeps killing conversion"
-              segment="Campus Muslim student"
-              when="2 hours ago"
-              quote="If it doesn't deliver after 10pm it doesn't solve my actual problem."
-            />
-            <MemoryCard
-              kind="decision"
-              title="Launch halal-only catalog, no mixed kitchens"
-              segment="Positioning"
-              when="yesterday"
-              quote="Trust wedge over catalog breadth. 7 of 9 interviews cited cross-contamination fears."
-            />
-            <MemoryCard
-              kind="outcome"
-              title="Late-night pilot → +23% conversion"
-              segment="Outcome, validated"
-              when="Apr 17"
-              quote="Retention held at 68% vs. 45% baseline. Decision stands."
-            />
-            <MemoryCard
-              kind="signal"
-              title="Rider payout opacity is the #1 objection"
-              segment="Restaurant operator"
-              when="Apr 15"
-              quote="Every week I chase Uber Eats for money I'm already owed."
-            />
+            {recent.length === 0 ? (
+              <Card className="md:col-span-2 border-dashed">
+                <CardContent className="py-10 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    No activity yet. Create a workspace and capture your first
+                    signal to see recent memory here.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              recent.map((r) => (
+                <Link
+                  key={`${r.kind}-${r.id}`}
+                  href={`/w/${r.workspace_id}/${r.kind === "signal" ? "memory" : r.kind === "decision" ? "decisions" : "timeline"}`}
+                >
+                  <MemoryCard
+                    kind={r.kind}
+                    title={r.title}
+                    segment={r.workspace_name ?? r.segment ?? "workspace"}
+                    when={formatDistanceToNow(r.when)}
+                    quote={r.quote ?? r.body}
+                  />
+                </Link>
+              ))
+            )}
           </div>
         </div>
       </section>

@@ -1,5 +1,8 @@
--- Dalil · initial schema
--- Apply with: supabase db push  (or paste into the Supabase SQL editor)
+-- Dalil · initial schema (demo-mode policies)
+-- Apply with: supabase db push
+--
+-- DEMO MODE: RLS is enabled with permissive policies so the anon role can
+-- read/write. Tighten these when auth is added.
 
 create extension if not exists "pgcrypto";
 create extension if not exists "vector";
@@ -9,11 +12,12 @@ create table if not exists workspaces (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   description text,
-  owner uuid references auth.users(id) on delete set null,
+  owner uuid,
   created_at timestamptz not null default now()
 );
 
 create index if not exists workspaces_owner_idx on workspaces(owner);
+create index if not exists workspaces_created_idx on workspaces(created_at desc);
 
 -- ---------- Signals (raw customer input) ----------
 create table if not exists signals (
@@ -27,7 +31,7 @@ create table if not exists signals (
 
 create index if not exists signals_workspace_idx on signals(workspace_id, created_at desc);
 
--- ---------- Signal analyses (AI extraction + founder confirmation) ----------
+-- ---------- Signal analyses ----------
 create table if not exists signal_analyses (
   id uuid primary key default gen_random_uuid(),
   signal_id uuid not null unique references signals(id) on delete cascade,
@@ -69,7 +73,7 @@ create index if not exists decisions_embedding_idx
   using ivfflat (embedding vector_cosine_ops)
   with (lists = 50);
 
--- ---------- Decision evidence (many-to-many between decisions and signals) ----------
+-- ---------- Decision evidence ----------
 create table if not exists decision_evidence (
   decision_id uuid not null references decisions(id) on delete cascade,
   signal_id uuid not null references signals(id) on delete cascade,
@@ -78,7 +82,11 @@ create table if not exists decision_evidence (
 );
 
 -- ---------- Outcomes ----------
-create type outcome_status as enum ('improved', 'failed', 'inconclusive', 'pending');
+do $$ begin
+  create type outcome_status as enum ('improved', 'failed', 'inconclusive', 'pending');
+exception
+  when duplicate_object then null;
+end $$;
 
 create table if not exists outcomes (
   id uuid primary key default gen_random_uuid(),
@@ -93,7 +101,7 @@ create index if not exists outcomes_decision_idx on outcomes(decision_id);
 -- ---------- Ideas (stage-zero chat) ----------
 create table if not exists ideas (
   id uuid primary key default gen_random_uuid(),
-  owner uuid references auth.users(id) on delete set null,
+  owner uuid,
   transcript_summary text,
   approved_idea text,
   audience text,
@@ -155,8 +163,7 @@ language sql stable as $$
   limit match_count;
 $$;
 
--- ---------- Row-level security ----------
--- All tables are owner-scoped. Adjust policies when collaboration lands.
+-- ---------- Row-level security (DEMO MODE: permissive) ----------
 alter table workspaces enable row level security;
 alter table signals enable row level security;
 alter table signal_analyses enable row level security;
@@ -165,61 +172,28 @@ alter table decision_evidence enable row level security;
 alter table outcomes enable row level security;
 alter table ideas enable row level security;
 
-create policy "workspaces_owner_rw" on workspaces
-  for all using (owner = auth.uid()) with check (owner = auth.uid());
+do $$ declare
+  tbl text;
+begin
+  foreach tbl in array array[
+    'workspaces','signals','signal_analyses','decisions',
+    'decision_evidence','outcomes','ideas'
+  ] loop
+    execute format(
+      'drop policy if exists %I on %I',
+      tbl || '_demo_all',
+      tbl
+    );
+    execute format(
+      'create policy %I on %I for all to anon, authenticated using (true) with check (true)',
+      tbl || '_demo_all',
+      tbl
+    );
+  end loop;
+end $$;
 
-create policy "signals_workspace_rw" on signals
-  for all using (
-    exists (
-      select 1 from workspaces w
-      where w.id = signals.workspace_id and w.owner = auth.uid()
-    )
-  ) with check (
-    exists (
-      select 1 from workspaces w
-      where w.id = signals.workspace_id and w.owner = auth.uid()
-    )
-  );
-
-create policy "signal_analyses_workspace_rw" on signal_analyses
-  for all using (
-    exists (
-      select 1 from signals s
-      join workspaces w on w.id = s.workspace_id
-      where s.id = signal_analyses.signal_id and w.owner = auth.uid()
-    )
-  );
-
-create policy "decisions_workspace_rw" on decisions
-  for all using (
-    exists (
-      select 1 from workspaces w
-      where w.id = decisions.workspace_id and w.owner = auth.uid()
-    )
-  ) with check (
-    exists (
-      select 1 from workspaces w
-      where w.id = decisions.workspace_id and w.owner = auth.uid()
-    )
-  );
-
-create policy "decision_evidence_workspace_rw" on decision_evidence
-  for all using (
-    exists (
-      select 1 from decisions d
-      join workspaces w on w.id = d.workspace_id
-      where d.id = decision_evidence.decision_id and w.owner = auth.uid()
-    )
-  );
-
-create policy "outcomes_workspace_rw" on outcomes
-  for all using (
-    exists (
-      select 1 from decisions d
-      join workspaces w on w.id = d.workspace_id
-      where d.id = outcomes.decision_id and w.owner = auth.uid()
-    )
-  );
-
-create policy "ideas_owner_rw" on ideas
-  for all using (owner = auth.uid()) with check (owner = auth.uid());
+-- ---------- Grants ----------
+grant usage on schema public to anon, authenticated;
+grant all on all tables in schema public to anon, authenticated;
+grant all on all sequences in schema public to anon, authenticated;
+grant execute on all functions in schema public to anon, authenticated;
