@@ -55,6 +55,7 @@ export function CaptureFlow({ workspaceId }: { workspaceId: string }) {
   const [extraction, setExtraction] = useState<Extraction | null>(null);
   const [founderNotes, setFounderNotes] = useState("");
   const [similar, setSimilar] = useState<Similar[]>([]);
+  const [recallLoading, setRecallLoading] = useState(false);
   const [pending, startTransition] = useTransition();
 
   function reset() {
@@ -66,6 +67,26 @@ export function CaptureFlow({ workspaceId }: { workspaceId: string }) {
     setExtraction(null);
     setFounderNotes("");
     setSimilar([]);
+    setRecallLoading(false);
+  }
+
+  async function fetchSimilar(workspace: string, sid: string) {
+    try {
+      const res = await fetch(
+        `/api/workspace/${workspace}/signals/${sid}/similar`,
+        { cache: "no-store" },
+      );
+      const body = (await res.json()) as
+        | { success: true; data: { ready: boolean; similar: Similar[] } }
+        | { success: false; error: string };
+      if (res.ok && body.success) {
+        setSimilar(body.data.similar);
+      }
+    } catch {
+      // Non-fatal — recall panel will just stay empty.
+    } finally {
+      setRecallLoading(false);
+    }
   }
 
   function runExtraction() {
@@ -128,12 +149,11 @@ export function CaptureFlow({ workspaceId }: { workspaceId: string }) {
           return;
         }
 
-        // Embedding is queued via `after()` on the server — recall for this
-        // memory will warm up in a moment. Leave the panel empty for now;
-        // a future "recall after save" round-trip can populate it.
         setSimilar([]);
+        setRecallLoading(true);
         setStep("confirmed");
-        toast.success("Memory saved. Embedding indexing queued.");
+        toast.success("Memory saved. Searching for similar past issues…");
+        void fetchSimilar(workspaceId, signalId);
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Save failed.");
       }
@@ -179,6 +199,7 @@ export function CaptureFlow({ workspaceId }: { workspaceId: string }) {
             workspaceId={workspaceId}
             similar={similar}
             signalId={signalId}
+            loading={recallLoading}
           />
         )}
       </aside>
@@ -274,7 +295,7 @@ function ExtractingCard() {
     <Card>
       <CardHeader>
         <CardTitle className="font-display text-lg">
-          Extracting with Claude…
+          Extracting with Gemini…
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -511,10 +532,12 @@ function RecallPanel({
   workspaceId,
   similar,
   signalId,
+  loading,
 }: {
   workspaceId: string;
   similar: Similar[];
   signalId: string | null;
+  loading?: boolean;
 }) {
   return (
     <Card>
@@ -525,7 +548,13 @@ function RecallPanel({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {similar.length === 0 ? (
+        {loading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-14 w-full" />
+            <Skeleton className="h-14 w-full" />
+          </div>
+        ) : similar.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             This is the first memory of its kind in the workspace. Future signals will be able to recall this one.
           </p>

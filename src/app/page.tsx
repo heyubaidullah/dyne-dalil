@@ -71,7 +71,7 @@ export default async function HomePage() {
               variant="outline"
               className="bg-card/60 backdrop-blur"
             >
-              <Link href="/w/halal-delivery/capture">Upload signal</Link>
+              <Link href="/workspaces">Upload signal</Link>
             </Button>
             <Button
               asChild

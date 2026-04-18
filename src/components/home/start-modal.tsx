@@ -447,7 +447,7 @@ export function StartModal({
                   </p>
                   <ol className="space-y-1 text-xs text-muted-foreground">
                     <li>
-                      1. GPT-4.1-mini summarizes the conversation via
+                      1. Gemini 2.5-flash summarizes the conversation via
                       <code className="mx-1 rounded bg-muted px-1 py-0.5 font-mono text-[10px]">
                         /api/idea-extract
                       </code>
