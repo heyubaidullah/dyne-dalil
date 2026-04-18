@@ -6,10 +6,8 @@ import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,6 +19,12 @@ import {
   Bookmark,
   CornerDownLeft,
   Loader2,
+  CheckCircle2,
+  Users,
+  AlertCircle,
+  Gem,
+  FlaskConical,
+  X,
 } from "lucide-react";
 import {
   sendDalilStartMessage,
@@ -42,7 +46,39 @@ const STARTER_PROMPTS = [
   "I have a problem but no product idea yet",
 ];
 
-const READY_MARKER = /save (this|it) as an idea/i;
+const AXES: Array<{
+  label: string;
+  icon: React.ReactNode;
+  keywords: string[];
+}> = [
+  {
+    label: "The idea, in one sentence",
+    icon: <Sparkles className="h-3.5 w-3.5" />,
+    keywords: ["idea", "build", "product", "service"],
+  },
+  {
+    label: "The narrowest honest audience",
+    icon: <Users className="h-3.5 w-3.5" />,
+    keywords: ["audience", "users", "customers", "who", "segment"],
+  },
+  {
+    label: "A specific pain point",
+    icon: <AlertCircle className="h-3.5 w-3.5" />,
+    keywords: ["pain", "problem", "frustration", "hate", "struggle"],
+  },
+  {
+    label: "Pressure-tested value",
+    icon: <Gem className="h-3.5 w-3.5" />,
+    keywords: ["value", "why", "pay", "switch", "adopt", "better"],
+  },
+  {
+    label: "What to test first",
+    icon: <FlaskConical className="h-3.5 w-3.5" />,
+    keywords: ["test", "experiment", "validate", "first", "next"],
+  },
+];
+
+const READY_MARKER = /save (this|it) as an idea|save it to your idea vault/i;
 
 export function StartModal({
   open,
@@ -62,7 +98,6 @@ export function StartModal({
   const scrollRef = useRef<HTMLDivElement>(null);
   const seededRef = useRef<string | null>(null);
 
-  // Reset when closed
   useEffect(() => {
     if (!open) {
       setTurns([FIRST_MESSAGE]);
@@ -72,7 +107,6 @@ export function StartModal({
     }
   }, [open]);
 
-  // Seed from hero input
   useEffect(() => {
     if (!open || !seedText) return;
     if (seededRef.current === seedText) return;
@@ -81,7 +115,6 @@ export function StartModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, seedText]);
 
-  // Auto-scroll
   useEffect(() => {
     if (!scrollRef.current) return;
     scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -97,7 +130,7 @@ export function StartModal({
       const res = await sendDalilStartMessage({ messages: next });
       if (!res.ok) {
         toast.error(res.error);
-        setTurns(next); // keep user turn visible
+        setTurns(next);
         return;
       }
       setTurns([...next, { role: "assistant", text: res.reply }]);
@@ -135,118 +168,206 @@ export function StartModal({
     });
   }
 
-  const canSend =
-    draft.trim().length > 0 && !loadingReply && !saving;
-  const canSave = turns.filter((t) => t.role === "user").length >= 2 && !saving;
+  const canSend = draft.trim().length > 0 && !loadingReply && !saving;
+  const userTurnCount = turns.filter((t) => t.role === "user").length;
+  const canSave = userTurnCount >= 2 && !saving;
+
+  // Light heuristic for "which axes have been touched" — based on the
+  // conversation so far. Not AI-driven; just visual progress.
+  const coveredAxes = AXES.map((axis) => {
+    const joined = turns.map((t) => t.text).join(" ").toLowerCase();
+    return axis.keywords.some((k) => joined.includes(k));
+  });
+  const coveredCount = coveredAxes.filter(Boolean).length;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90vh] w-full max-w-2xl flex-col gap-0 p-0">
-        <DialogHeader className="gap-1 border-b border-border px-6 py-5">
-          <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-700 text-white">
+      <DialogContent
+        className="flex h-[88vh] w-[min(1200px,96vw)] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-none"
+        showCloseButton={false}
+      >
+        {/* Header */}
+        <header className="flex items-center justify-between gap-4 border-b border-border bg-card px-6 py-4">
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-700 text-white shadow-sm">
               <Sparkles className="h-4 w-4" />
             </span>
-            <div>
+            <div className="min-w-0">
               <DialogTitle className="font-display text-lg leading-tight">
                 Dalil Start
               </DialogTitle>
               <DialogDescription className="text-xs">
-                Stage-zero chat — sharpen the idea, audience, and wedge
-                before committing to a workspace.
+                Stage-zero chat · sharpen idea, audience, and wedge before
+                committing to a workspace.
               </DialogDescription>
             </div>
           </div>
-        </DialogHeader>
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            aria-label="Close"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </header>
 
-        <ScrollArea className="flex-1 px-6 py-5" ref={scrollRef as never}>
-          <div className="flex flex-col gap-4">
-            {turns.length === 1 && (
-              <div className="flex flex-wrap gap-2 pb-2">
-                {STARTER_PROMPTS.map((p) => (
-                  <Badge
-                    key={p}
-                    variant="outline"
-                    onClick={() => send(p)}
-                    className="cursor-pointer gap-1 bg-card hover:bg-secondary"
-                  >
-                    <Sparkles className="h-3 w-3 text-teal-700" />
-                    {p}
-                  </Badge>
-                ))}
-              </div>
-            )}
-            {turns.map((t, i) => (
-              <Bubble key={i} turn={t} />
-            ))}
-            {loadingReply && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Dalil is thinking…
-              </div>
-            )}
-          </div>
-        </ScrollArea>
-
-        <DialogFooter className="flex-col items-stretch gap-3 border-t border-border bg-card/60 px-6 py-4 sm:flex-col">
-          <form onSubmit={handleSubmit} className="flex items-end gap-2">
-            <Textarea
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder={
-                turns.length === 1
-                  ? "What do you want to do today?"
-                  : "Reply to Dalil…"
-              }
-              rows={2}
-              className="flex-1 resize-none"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSubmit(e);
-                }
-              }}
-              disabled={loadingReply || saving}
-            />
-            <Button
-              type="submit"
-              size="icon"
-              className="h-11 w-11 shrink-0"
-              disabled={!canSend}
-              aria-label="Send"
-            >
-              {loadingReply ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <ArrowUp className="h-4 w-4" />
-              )}
-            </Button>
-          </form>
-
-          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <CornerDownLeft className="h-3 w-3" />
-              Enter to send · Shift+Enter for newline
-            </span>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className={cn(offeredSave && "border-teal-400")}
-                disabled={!canSave}
-                onClick={() => save(false)}
-              >
-                {saving ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Bookmark className="h-3.5 w-3.5" />
+        {/* Body — two columns */}
+        <div className="grid flex-1 min-h-0 grid-cols-1 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+          {/* Chat column */}
+          <section className="flex min-h-0 flex-col border-r border-border">
+            <ScrollArea className="flex-1" ref={scrollRef as never}>
+              <div className="flex flex-col gap-4 p-6">
+                {turns.length === 1 && (
+                  <div className="flex flex-wrap gap-2 pb-2">
+                    {STARTER_PROMPTS.map((p) => (
+                      <Badge
+                        key={p}
+                        variant="outline"
+                        onClick={() => send(p)}
+                        className="cursor-pointer gap-1 bg-card hover:bg-secondary"
+                      >
+                        <Sparkles className="h-3 w-3 text-teal-700" />
+                        {p}
+                      </Badge>
+                    ))}
+                  </div>
                 )}
-                Save to Idea Vault
+                {turns.map((t, i) => (
+                  <Bubble key={i} turn={t} />
+                ))}
+                {loadingReply && (
+                  <div className="flex items-center gap-2 pl-11 text-sm text-muted-foreground">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Dalil is thinking…
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+
+            <form
+              onSubmit={handleSubmit}
+              className="flex items-end gap-2 border-t border-border bg-card/60 p-4"
+            >
+              <Textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder={
+                  turns.length === 1
+                    ? "What do you want to do today?"
+                    : "Reply to Dalil…"
+                }
+                rows={2}
+                className="flex-1 resize-none"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSubmit(e);
+                  }
+                }}
+                disabled={loadingReply || saving}
+              />
+              <Button
+                type="submit"
+                size="icon"
+                className="h-11 w-11 shrink-0"
+                disabled={!canSend}
+                aria-label="Send"
+              >
+                {loadingReply ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ArrowUp className="h-4 w-4" />
+                )}
               </Button>
+            </form>
+          </section>
+
+          {/* Context / progress column */}
+          <aside className="flex min-h-0 flex-col bg-secondary/40">
+            <ScrollArea className="flex-1">
+              <div className="space-y-5 p-6">
+                <div>
+                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Sharpening progress
+                  </p>
+                  <div className="space-y-2">
+                    {AXES.map((axis, i) => {
+                      const done = coveredAxes[i];
+                      return (
+                        <div
+                          key={axis.label}
+                          className={cn(
+                            "flex items-center gap-2.5 rounded-md border p-2.5 text-sm transition-colors",
+                            done
+                              ? "border-teal-300/70 bg-teal-50/60 text-ink-950"
+                              : "border-border bg-card text-muted-foreground",
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "flex h-6 w-6 items-center justify-center rounded-full",
+                              done
+                                ? "bg-teal-700 text-white"
+                                : "bg-muted text-muted-foreground",
+                            )}
+                          >
+                            {done ? (
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                            ) : (
+                              axis.icon
+                            )}
+                          </span>
+                          <span className="flex-1 leading-tight">
+                            {axis.label}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    {coveredCount} of {AXES.length} axes covered ·{" "}
+                    {userTurnCount} reply{userTurnCount === 1 ? "" : "s"}
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-border bg-card p-4">
+                  <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    What happens on save
+                  </p>
+                  <ol className="space-y-1 text-xs text-muted-foreground">
+                    <li>
+                      1. Gemini summarizes your conversation into approved
+                      idea · audience · problem statement.
+                    </li>
+                    <li>
+                      2. The idea lands in your Idea Vault, ready to revisit.
+                    </li>
+                    <li>
+                      3. Optionally, Dalil spins up a workspace so you can
+                      start capturing real customer signals against it.
+                    </li>
+                  </ol>
+                </div>
+
+                <div className="rounded-xl border border-dashed border-border bg-card/60 p-4">
+                  <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    The move behind the wedge
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Founders who win at 0→1 don&apos;t just have an idea —
+                    they know exactly who has the pain today, how often it
+                    hurts, and what they&apos;d pay to make it stop. Dalil
+                    Start is the conversation that gets you there.
+                  </p>
+                </div>
+              </div>
+            </ScrollArea>
+
+            <div className="space-y-2 border-t border-border bg-card/60 p-4">
               <Button
                 type="button"
-                size="sm"
+                className="w-full gap-1.5"
                 disabled={!canSave}
                 onClick={() => save(true)}
               >
@@ -257,9 +378,30 @@ export function StartModal({
                 )}
                 Save & create workspace
               </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className={cn(
+                  "w-full gap-1.5",
+                  offeredSave && "border-teal-400",
+                )}
+                disabled={!canSave}
+                onClick={() => save(false)}
+              >
+                {saving ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Bookmark className="h-3.5 w-3.5" />
+                )}
+                Save to Idea Vault
+              </Button>
+              <p className="flex items-center justify-center gap-1 pt-1 text-[11px] text-muted-foreground">
+                <CornerDownLeft className="h-3 w-3" />
+                Enter to send · Shift+Enter for newline
+              </p>
             </div>
-          </div>
-        </DialogFooter>
+          </aside>
+        </div>
       </DialogContent>
     </Dialog>
   );
