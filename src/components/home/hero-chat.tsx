@@ -1,9 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Sparkles, ArrowUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { StartModal } from "@/components/home/start-modal";
 
 const PROMPTS = [
   "I want to validate a startup idea",
@@ -11,17 +11,22 @@ const PROMPTS = [
   "What patterns are showing up in my latest calls?",
 ];
 
+/**
+ * Homepage hero chat bar. Per the team plan, clicking into this opens a
+ * dedicated large modal (Dalil Start), not an inline chat — the modal
+ * hosts a guided Gemini conversation that sharpens idea, audience, pain
+ * point, and wedge before saving to the Idea Vault.
+ */
 export function HeroChat() {
-  const router = useRouter();
   const [value, setValue] = useState("");
+  const [open, setOpen] = useState(false);
+  const [seed, setSeed] = useState<string | undefined>(undefined);
 
-  function submit(text: string) {
-    const q = text.trim();
-    if (!q) {
-      router.push("/start");
-      return;
-    }
-    router.push(`/start?q=${encodeURIComponent(q)}`);
+  function launch(text?: string) {
+    const q = (text ?? value).trim();
+    setSeed(q.length > 0 ? q : undefined);
+    setValue("");
+    setOpen(true);
   }
 
   return (
@@ -29,7 +34,7 @@ export function HeroChat() {
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          submit(value);
+          launch();
         }}
         className="group relative flex items-center rounded-2xl border border-border bg-card shadow-sm transition-shadow focus-within:shadow-md focus-within:border-teal-400"
       >
@@ -55,12 +60,21 @@ export function HeroChat() {
             key={p}
             variant="outline"
             className="cursor-pointer bg-card/60 backdrop-blur hover:bg-secondary"
-            onClick={() => submit(p)}
+            onClick={() => launch(p)}
           >
             {p}
           </Badge>
         ))}
       </div>
+
+      <StartModal
+        open={open}
+        onOpenChange={(v) => {
+          setOpen(v);
+          if (!v) setSeed(undefined);
+        }}
+        seedText={seed}
+      />
     </div>
   );
 }
