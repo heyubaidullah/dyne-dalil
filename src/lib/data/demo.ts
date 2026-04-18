@@ -40,9 +40,9 @@ export const DEMO_WORKSPACES: WorkspaceSummary[] = [
     description:
       "B2B prayer scheduling for mosque admins and Muslim-owned companies.",
     created_at: now(12),
-    signal_count: 0,
-    decision_count: 0,
-    last_activity: now(12),
+    signal_count: 3,
+    decision_count: 2,
+    last_activity: now(2),
   },
 ];
 
@@ -254,7 +254,132 @@ const SIGNALS_BY_WS: Record<string, SignalWithAnalysis[]> = {
       },
     },
   ],
-  [PRAYER]: [],
+  [PRAYER]: [
+    {
+      id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb01",
+      workspace_id: PRAYER,
+      title: "Call with Imam Faisal, suburban masjid admin",
+      source_type: "call",
+      raw_text:
+        "Imam Faisal runs a 900-member masjid near Dallas. Current prayer-time tool is an iframe someone embedded in 2014. He manually updates Fajr and Isha twice a week because Hanafi vs Shafi calc methods confuse members. Wants a shared calendar his volunteers can edit, push notifications for Jumu'ah changes, and a printable monthly sheet for the elders.",
+      created_at: now(3),
+      analysis: {
+        id: "sa-p01",
+        signal_id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb01",
+        ai_summary:
+          "Masjid admin needs a shared prayer-time tool with fiqh-aware calculation and push notifications.",
+        founder_notes: null,
+        confirmed_summary:
+          "Masjid admin (~900 members) is blocked by a stale iframe tool, manually reconciles Hanafi vs Shafi calc methods, and wants a shared editable calendar, push for Jumu'ah changes, and a printable monthly sheet.",
+        pain_points: [
+          "Manual bi-weekly prayer-time updates",
+          "Fiqh calculation method confusion",
+          "No push notifications for schedule changes",
+          "Elders want printable sheets",
+        ],
+        objections: [
+          "Every tool assumes one madhhab",
+          "Can't delegate to volunteers safely",
+        ],
+        requests: [
+          "Shared editable calendar",
+          "Fiqh-aware calculation methods",
+          "Push notifications for Jumu'ah changes",
+          "Printable monthly PDF",
+        ],
+        urgency: "high",
+        likely_segment: "Masjid administrator",
+        quotes: [
+          "Every tool assumes one madhhab — my board is split and I'm the one caught in the middle.",
+          "The elders still want something they can tape to the fridge.",
+        ],
+        confidence: "high",
+        created_at: now(3),
+        confirmed_at: now(3),
+      },
+    },
+    {
+      id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02",
+      workspace_id: PRAYER,
+      title: "Interview with Sr. Maryam, HR at a 60-person Muslim-owned firm",
+      source_type: "interview",
+      raw_text:
+        "Sr. Maryam handles ops at a 60-person Muslim-owned firm in the Bay Area. Employees want a prayer-room booking tool, automatic Zuhr/Asr blockers on Google Calendar, and a weekly email summarizing iqamah times. They've tried three products — all consumer-focused, none handled SSO or the office's Hijri calendar preference.",
+      created_at: now(5),
+      analysis: {
+        id: "sa-p02",
+        signal_id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02",
+        ai_summary:
+          "B2B buyer at a Muslim-owned SMB needs prayer-room booking, calendar blockers, and SSO.",
+        founder_notes: null,
+        confirmed_summary:
+          "HR at a 60-person firm wants a prayer-room booking tool, automatic Zuhr/Asr Google Calendar blockers, a weekly iqamah email, SSO, and Hijri calendar display. Consumer tools failed all three asks.",
+        pain_points: [
+          "No SSO on consumer prayer apps",
+          "No prayer-room booking",
+          "No Google Calendar blocker automation",
+          "Hijri calendar not shown in product",
+        ],
+        objections: [
+          "Can't deploy consumer apps to 60 employees",
+        ],
+        requests: [
+          "Prayer-room booking",
+          "Auto Google Calendar blockers for Zuhr/Asr",
+          "Weekly iqamah summary email",
+          "SSO (Google Workspace / Okta)",
+          "Hijri alongside Gregorian",
+        ],
+        urgency: "high",
+        likely_segment: "Muslim-owned SMB operations",
+        quotes: [
+          "Three products, none of them even know what SSO is.",
+          "Zuhr blockers on the shared calendar would kill the passive-aggressive scheduling.",
+        ],
+        confidence: "high",
+        created_at: now(5),
+        confirmed_at: now(5),
+      },
+    },
+    {
+      id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03",
+      workspace_id: PRAYER,
+      title: "DM thread with Br. Yusuf, volunteer youth coordinator",
+      source_type: "dm",
+      raw_text:
+        "Br. Yusuf helps run halaqa scheduling for masjid youth program. Says WhatsApp groups are chaos — teens ignore reminders, parents want confirmation receipts, and nobody tracks which teens actually show up. Asked if Dalil would support recurring event series + attendance tracking.",
+      created_at: now(7),
+      analysis: {
+        id: "sa-p03",
+        signal_id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03",
+        ai_summary:
+          "Volunteer coordinator wants recurring event series + attendance tracking on top of prayer scheduling.",
+        founder_notes:
+          "Adjacent use case — could be v2 but don't let it bloat the prayer-time MVP.",
+        confirmed_summary:
+          "Volunteer youth coordinator needs recurring halaqa scheduling with parent-facing confirmations and teen attendance tracking. Currently using WhatsApp groups with no visibility.",
+        pain_points: [
+          "WhatsApp groups don't track attendance",
+          "Parents want confirmation receipts",
+          "Reminders ignored by teens",
+        ],
+        objections: [],
+        requests: [
+          "Recurring event series",
+          "Parent confirmation receipts",
+          "Teen attendance tracking",
+        ],
+        urgency: "medium",
+        likely_segment: "Masjid youth / halaqa coordinator",
+        quotes: [
+          "Parents want a receipt that Tuesday halaqa actually happened.",
+        ],
+        confidence: "medium",
+        created_at: now(7),
+        confirmed_at: now(7),
+      },
+    },
+  ],
 };
 
 export function demoSignals(workspaceId: string): SignalWithAnalysis[] {
@@ -384,7 +509,75 @@ const DECISIONS_BY_WS: Record<string, DecisionWithContext[]> = {
       },
     },
   ],
-  [PRAYER]: [],
+  [PRAYER]: [
+    {
+      id: "dec-p01",
+      workspace_id: PRAYER,
+      title:
+        "Ship fiqh-aware calc methods (Hanafi, Shafi, ISNA, MWL) from day one",
+      category: "Product",
+      rationale:
+        "Imam Faisal's masjid (900 members, split board) can't adopt a one-madhhab tool. Sr. Maryam's firm also has mixed employee preferences. Without multi-fiqh from v1, we're a consumer-grade replacement at best.",
+      expected_outcome:
+        "Higher masjid activation rate; fewer support threads about 'which calc method'.",
+      created_at: now(5),
+      evidence: [
+        {
+          signal_id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb01",
+          snippet:
+            "Every tool assumes one madhhab — my board is split and I'm the one caught in the middle.",
+          signal_title: "Call with Imam Faisal, suburban masjid admin",
+        },
+        {
+          signal_id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02",
+          snippet: "Hijri alongside Gregorian — table stakes.",
+          signal_title:
+            "Interview with Sr. Maryam, HR at a 60-person Muslim-owned firm",
+        },
+      ],
+      outcome: {
+        id: "out-p01",
+        decision_id: "dec-p01",
+        status: "improved",
+        notes:
+          "Four masjids activated in week one after fiqh picker shipped. Support tickets about calc methods dropped to zero.",
+        updated_at: now(2),
+      },
+    },
+    {
+      id: "dec-p02",
+      workspace_id: PRAYER,
+      title: "Lead with B2B (masjid + Muslim-owned SMB), not consumer",
+      category: "Positioning",
+      rationale:
+        "Both confirmed buyer memories (Imam Faisal, Sr. Maryam) are willing to pay per-seat/per-org. Consumer prayer apps commoditize to $0. The pain — coordination — is collective, not individual.",
+      expected_outcome:
+        "Recurring revenue on two paid pilots within 60 days; tighter product surface.",
+      created_at: now(6),
+      evidence: [
+        {
+          signal_id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb01",
+          snippet:
+            "I'd pay per-seat if it meant my volunteers could update Fajr without breaking anything.",
+          signal_title: "Call with Imam Faisal, suburban masjid admin",
+        },
+        {
+          signal_id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02",
+          snippet: "Three products, none of them even know what SSO is.",
+          signal_title:
+            "Interview with Sr. Maryam, HR at a 60-person Muslim-owned firm",
+        },
+      ],
+      outcome: {
+        id: "out-p02",
+        decision_id: "dec-p02",
+        status: "pending",
+        notes:
+          "Two paid pilots contracted; measuring retention against consumer-app baseline.",
+        updated_at: now(2),
+      },
+    },
+  ],
 };
 
 export function demoDecisions(workspaceId: string): DecisionWithContext[] {
