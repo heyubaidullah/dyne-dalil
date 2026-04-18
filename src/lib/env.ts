@@ -18,17 +18,32 @@ const schema = z.object({
 
 type EnvShape = z.infer<typeof schema>;
 
-const parsed = schema.safeParse({
-  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-  SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
-  ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
-  OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-  GEMINI_API_KEY: process.env.GEMINI_API_KEY,
-});
+/**
+ * Treat empty strings in .env as unset — otherwise `ANTHROPIC_API_KEY=`
+ * (with no value) would trip a `.min(1)` check and cascade the whole parse
+ * into a "missing" state for every other var.
+ */
+const emptyToUndefined = (v: string | undefined) =>
+  v !== undefined && v.trim().length === 0 ? undefined : v;
 
-const raw: EnvShape = parsed.success ? parsed.data : {};
+const rawInput: EnvShape = {
+  NEXT_PUBLIC_SUPABASE_URL: emptyToUndefined(process.env.NEXT_PUBLIC_SUPABASE_URL),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: emptyToUndefined(
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  ),
+  NEXT_PUBLIC_APP_URL: emptyToUndefined(process.env.NEXT_PUBLIC_APP_URL),
+  SUPABASE_SERVICE_ROLE_KEY: emptyToUndefined(process.env.SUPABASE_SERVICE_ROLE_KEY),
+  ANTHROPIC_API_KEY: emptyToUndefined(process.env.ANTHROPIC_API_KEY),
+  OPENAI_API_KEY: emptyToUndefined(process.env.OPENAI_API_KEY),
+  GEMINI_API_KEY: emptyToUndefined(process.env.GEMINI_API_KEY),
+};
+
+const parsed = schema.safeParse(rawInput);
+
+// On a schema failure for an optional key, fall back to the rawInput so one
+// malformed value doesn't knock the rest offline. Required-at-runtime keys
+// are still enforced by the Proxy below.
+const raw: EnvShape = parsed.success ? parsed.data : rawInput;
 
 const REQUIRED_FOR_RUNTIME: Array<keyof EnvShape> = [
   "NEXT_PUBLIC_SUPABASE_URL",
@@ -43,7 +58,7 @@ export const env = new Proxy(raw, {
       REQUIRED_FOR_RUNTIME.includes(prop as keyof EnvShape)
     ) {
       throw new Error(
-        `Missing env var: ${prop}. Add it to .env.local — see .env.example for the full list.`,
+        `Missing env var: ${prop}. Add it to .env (or .env.local) — see .env.example for the full list.`,
       );
     }
     return value as string;
@@ -54,7 +69,7 @@ export function requireEnv(key: keyof EnvShape): string {
   const value = raw[key];
   if (!value) {
     throw new Error(
-      `Missing env var: ${key}. Add it to .env.local — see .env.example.`,
+      `Missing env var: ${key}. Add it to .env (or .env.local) — see .env.example.`,
     );
   }
   return value;
