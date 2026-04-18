@@ -22,7 +22,6 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Search, X } from "lucide-react";
-import { createDecisionAction } from "@/app/actions/decisions";
 
 type SignalOption = {
   id: string;
@@ -89,22 +88,51 @@ export function NewDecisionForm({
 
   function submit() {
     setErrors({});
+    const trimmedTitle = title.trim();
+    const trimmedRationale = rationale.trim();
+    const fieldErrors: Record<string, string> = {};
+    if (trimmedTitle.length < 3)
+      fieldErrors.title = "Give the decision a title.";
+    if (trimmedRationale.length < 10)
+      fieldErrors.rationale = "Explain why — at least a sentence.";
+    if (Object.keys(fieldErrors).length > 0) {
+      setErrors(fieldErrors);
+      return;
+    }
+
     startTransition(async () => {
-      const res = await createDecisionAction({
-        workspace_id: workspaceId,
-        title,
-        category,
-        rationale,
-        expected_outcome: expected,
-        signal_ids: selected,
-      });
-      if (!res.ok) {
-        if (res.fieldErrors) setErrors(res.fieldErrors);
-        toast.error(res.error);
-        return;
+      try {
+        const res = await fetch(`/api/workspace/${workspaceId}/decisions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: trimmedTitle,
+            category: category || undefined,
+            rationale: trimmedRationale,
+            expected_outcome: expected.trim() || undefined,
+            signal_ids: selected.length > 0 ? selected : undefined,
+          }),
+        });
+        const body = (await res.json()) as
+          | {
+              success: true;
+              data: { decision_id: string; embedding_status: string };
+            }
+          | { success: false; error: string; message?: string };
+
+        if (!res.ok || !body.success) {
+          toast.error(
+            ("message" in body && body.message) ||
+              ("error" in body && body.error) ||
+              "Save failed.",
+          );
+          return;
+        }
+        toast.success("Decision logged. Embedding queued.");
+        router.push(`/w/${workspaceId}/decisions`);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Save failed.");
       }
-      toast.success("Decision logged.");
-      router.push(`/w/${workspaceId}/decisions`);
     });
   }
 

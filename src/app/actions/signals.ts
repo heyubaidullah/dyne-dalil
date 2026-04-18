@@ -3,8 +3,45 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { extractSignal, type Extraction } from "@/lib/ai/extract";
-import { embedText, buildMemoryEmbeddingText } from "@/lib/ai/embed";
+import {
+  generateStructuredOutput,
+  AIWrapperError,
+} from "@/lib/ai/wrapper";
+
+/**
+ * Signal ingestion + extraction.
+ *
+ * The capture UI calls `ingestSignalAction` to save the raw signal and run
+ * structured extraction through the wrapper. The founder confirmation step
+ * posts to `/api/workspace/[id]/signal-analyses/confirm` which writes the
+ * canonical memory and queues an embedding via the embedding pipeline.
+ */
+
+const EXTRACTION_SYSTEM = `You are Dalil's extraction engine. Your job is to turn raw founder-gathered customer text — call transcripts, rough notes, DMs, survey snippets — into structured, founder-readable evidence.
+
+Style rules:
+- Be conservative. If something isn't clearly stated, don't invent it.
+- Keep the customer's voice in quotes. Lightly clean filler words only if unreadable.
+- Pain points = real problems named or implied, not vibes. Prefer specific over abstract.
+- Objections = things that would make this person say no.
+- Requests = what they explicitly asked for.
+- Confidence should reflect how much raw data you have. One short note → at most "medium".
+- Segment should be the narrowest honest description (e.g. "Campus Muslim student" > "Student").
+
+Return only the structured JSON.`;
+
+const ExtractionSchema = z.object({
+  summary: z.string(),
+  pain_points: z.array(z.string()),
+  objections: z.array(z.string()),
+  requests: z.array(z.string()),
+  urgency: z.enum(["low", "medium", "high"]),
+  likely_segment: z.string(),
+  quotes: z.array(z.string()),
+  confidence: z.enum(["low", "medium", "high"]),
+});
+
+export type Extraction = z.infer<typeof ExtractionSchema>;
 
 const ingestSchema = z.object({
   workspace_id: z.string().uuid(),
@@ -22,16 +59,8 @@ export type IngestResult =
       signal_id: string;
       extraction: Extraction;
     }
-  | {
-      ok: false;
-      error: string;
-    };
+  | { ok: false; error: string };
 
-/**
- * Create a raw signal and immediately run Claude extraction. The extracted
- * fields are saved to `signal_analyses` with `confirmed_at = null` so the
- * founder-review UI can show them for editing.
- */
 export async function ingestSignalAction(input: {
   workspace_id: string;
   title?: string;
@@ -61,12 +90,25 @@ export async function ingestSignalAction(input: {
 
   let extraction: Extraction;
   try {
-    extraction = await extractSignal(parsed.data.raw_text);
+    extraction = await generateStructuredOutput({
+      provider: "gemini",
+      model: "gemini-2.5-flash",
+      systemInstruction: EXTRACTION_SYSTEM,
+      userPrompt: `Extract structure from this signal.\n\n<signal>\n${parsed.data.raw_text}\n</signal>`,
+      schema: ExtractionSchema,
+      temperature: 0.2,
+    });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Extraction failed.";
+    const message =
+      e instanceof AIWrapperError
+        ? `${e.code}: ${e.message}`
+        : e instanceof Error
+          ? e.message
+          : "Extraction failed.";
     return { ok: false, error: message };
   }
 
+  // Store the AI proposal so the Memory Library can show "pending review".
   const { error: analysisErr } = await sb.from("signal_analyses").insert({
     signal_id: signal.id,
     ai_summary: extraction.summary,
@@ -89,104 +131,4 @@ export async function ingestSignalAction(input: {
   revalidatePath(`/w/${parsed.data.workspace_id}/timeline`);
 
   return { ok: true, signal_id: signal.id, extraction };
-}
-
-const confirmSchema = z.object({
-  signal_id: z.string().uuid(),
-  workspace_id: z.string().uuid(),
-  confirmed_summary: z.string().trim().min(5),
-  founder_notes: z.string().trim().optional().or(z.literal("")),
-  pain_points: z.array(z.string().trim().min(1)),
-  objections: z.array(z.string().trim().min(1)),
-  requests: z.array(z.string().trim().min(1)),
-  quotes: z.array(z.string().trim().min(1)),
-  urgency: z.enum(["low", "medium", "high"]),
-  likely_segment: z.string().trim().min(1),
-  confidence: z.enum(["low", "medium", "high"]),
-});
-
-export type ConfirmResult =
-  | {
-      ok: true;
-      similar: Array<{
-        id: string;
-        signal_id: string;
-        confirmed_summary: string | null;
-        similarity: number;
-      }>;
-    }
-  | { ok: false; error: string };
-
-/**
- * Save the founder-confirmed extraction, generate an embedding, and return
- * semantically similar past memories so the UI can surface "we've seen this
- * before" in the same motion.
- */
-export async function confirmAnalysisAction(
-  input: z.infer<typeof confirmSchema>,
-): Promise<ConfirmResult> {
-  const parsed = confirmSchema.safeParse(input);
-  if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
-  }
-
-  const p = parsed.data;
-  const sb = db();
-
-  const embeddingText = buildMemoryEmbeddingText({
-    confirmed_summary: p.confirmed_summary,
-    pain_points: p.pain_points,
-    objections: p.objections,
-    quotes: p.quotes,
-  });
-
-  let embedding: number[];
-  try {
-    embedding = await embedText(embeddingText);
-  } catch (e) {
-    const message = e instanceof Error ? e.message : "Embedding failed.";
-    return { ok: false, error: message };
-  }
-
-  const { error: updateErr } = await sb
-    .from("signal_analyses")
-    .update({
-      confirmed_summary: p.confirmed_summary,
-      founder_notes: p.founder_notes?.length ? p.founder_notes : null,
-      pain_points: p.pain_points,
-      objections: p.objections,
-      requests: p.requests,
-      quotes: p.quotes,
-      urgency: p.urgency,
-      likely_segment: p.likely_segment,
-      confidence: p.confidence,
-      confirmed_at: new Date().toISOString(),
-      embedding,
-    })
-    .eq("signal_id", p.signal_id);
-
-  if (updateErr) return { ok: false, error: updateErr.message };
-
-  // Similar-Issue Recall: find other confirmed memories in this workspace
-  // closest to the one we just saved (excluding itself).
-  const { data: similar, error: matchErr } = await sb.rpc(
-    "match_signal_analyses",
-    {
-      query_embedding: embedding,
-      workspace_filter: p.workspace_id,
-      match_count: 6,
-    },
-  );
-  if (matchErr) {
-    return { ok: true, similar: [] };
-  }
-
-  revalidatePath(`/w/${p.workspace_id}`);
-  revalidatePath(`/w/${p.workspace_id}/memory`);
-  revalidatePath(`/w/${p.workspace_id}/timeline`);
-
-  return {
-    ok: true,
-    similar: (similar ?? []).filter((r) => r.signal_id !== p.signal_id).slice(0, 5),
-  };
 }

@@ -26,10 +26,7 @@ import {
   FlaskConical,
   X,
 } from "lucide-react";
-import {
-  sendDalilStartMessage,
-  saveDalilStartIdea,
-} from "@/app/actions/chat";
+import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 type Turn = { role: "user" | "assistant"; text: string };
@@ -91,17 +88,21 @@ export function StartModal({
 }) {
   const router = useRouter();
   const [turns, setTurns] = useState<Turn[]>([FIRST_MESSAGE]);
+  const [streaming, setStreaming] = useState(false);
   const [draft, setDraft] = useState("");
-  const [loadingReply, startReply] = useTransition();
   const [saving, startSave] = useTransition();
   const [offeredSave, setOfferedSave] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const seededRef = useRef<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (!open) {
+      abortRef.current?.abort();
+      abortRef.current = null;
       setTurns([FIRST_MESSAGE]);
       setDraft("");
+      setStreaming(false);
       setOfferedSave(false);
       seededRef.current = null;
     }
@@ -111,69 +112,174 @@ export function StartModal({
     if (!open || !seedText) return;
     if (seededRef.current === seedText) return;
     seededRef.current = seedText;
-    send(seedText);
+    void send(seedText);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, seedText]);
 
   useEffect(() => {
     if (!scrollRef.current) return;
     scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [turns, loadingReply]);
+  }, [turns, streaming]);
 
-  function send(text: string) {
+  async function send(text: string) {
     const clean = text.trim();
-    if (!clean) return;
-    const next = [...turns, { role: "user" as const, text: clean }];
+    if (!clean || streaming) return;
+    const userTurn: Turn = { role: "user", text: clean };
+    const next = [...turns, userTurn];
     setTurns(next);
     setDraft("");
-    startReply(async () => {
-      const res = await sendDalilStartMessage({ messages: next });
-      if (!res.ok) {
-        toast.error(res.error);
-        setTurns(next);
-        return;
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setStreaming(true);
+    // Reserve an empty assistant bubble that we'll stream into.
+    setTurns((prev) => [...prev, { role: "assistant", text: "" }]);
+
+    try {
+      const res = await fetch("/api/stage-zero-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: next.map((t) => ({
+            role: t.role,
+            content: t.text,
+          })),
+        }),
+        signal: controller.signal,
+      });
+
+      if (!res.ok || !res.body) {
+        const body = await res.text().catch(() => "");
+        throw new Error(body || `Chat failed (${res.status}).`);
       }
-      setTurns([...next, { role: "assistant", text: res.reply }]);
-      if (READY_MARKER.test(res.reply)) setOfferedSave(true);
-    });
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let full = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        full += chunk;
+        setTurns((prev) => {
+          const copy = [...prev];
+          copy[copy.length - 1] = { role: "assistant", text: full };
+          return copy;
+        });
+      }
+
+      if (READY_MARKER.test(full)) setOfferedSave(true);
+    } catch (e) {
+      if ((e as Error).name === "AbortError") return;
+      toast.error(e instanceof Error ? e.message : "Chat failed.");
+      // Drop the placeholder if the stream errored.
+      setTurns((prev) => prev.slice(0, -1));
+    } finally {
+      setStreaming(false);
+      abortRef.current = null;
+    }
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (loadingReply) return;
-    send(draft);
+    if (streaming) return;
+    void send(draft);
   }
 
   function save(convertToWorkspace: boolean) {
     startSave(async () => {
-      const res = await saveDalilStartIdea({
-        messages: turns,
-        convertToWorkspace,
-      });
-      if (!res.ok) {
-        toast.error(res.error);
-        return;
-      }
-      toast.success(
-        res.workspace_id
-          ? "Idea saved and workspace created."
-          : "Saved to your Idea Vault.",
-      );
-      onOpenChange(false);
-      if (res.workspace_id) {
-        router.push(`/w/${res.workspace_id}`);
-      } else {
-        router.push("/ideas");
+      try {
+        const res = await fetch("/api/idea-extract", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            transcript: turns.map((t) => ({
+              role: t.role,
+              content: t.text,
+            })),
+          }),
+        });
+
+        const body = (await res.json()) as
+          | {
+              success: true;
+              data: {
+                chat_transcript_summary: string;
+                approved_idea: string;
+                audience: string;
+                problem_statement: string;
+                convert_to_workspace_flag: boolean;
+              };
+            }
+          | { success: false; error: string; message?: string };
+
+        if (!res.ok || !body.success) {
+          toast.error(
+            ("message" in body && body.message) ||
+              ("error" in body && body.error) ||
+              "Extraction failed.",
+          );
+          return;
+        }
+
+        const idea = body.data;
+        const supabase = createClient();
+
+        const { data: saved, error: insertErr } = await supabase
+          .from("ideas")
+          .insert({
+            approved_idea: idea.approved_idea,
+            audience: idea.audience,
+            problem_statement: idea.problem_statement,
+            transcript_summary: idea.chat_transcript_summary,
+          })
+          .select("id")
+          .single();
+
+        if (insertErr || !saved) {
+          toast.error(insertErr?.message ?? "Could not save idea.");
+          return;
+        }
+
+        let workspaceId: string | null = null;
+        if (convertToWorkspace || idea.convert_to_workspace_flag) {
+          const { data: ws } = await supabase
+            .from("workspaces")
+            .insert({
+              name: idea.approved_idea,
+              description: idea.problem_statement,
+            })
+            .select("id")
+            .single();
+
+          if (ws) {
+            workspaceId = ws.id;
+            await supabase
+              .from("ideas")
+              .update({ converted_workspace_id: ws.id })
+              .eq("id", saved.id);
+          }
+        }
+
+        toast.success(
+          workspaceId
+            ? "Idea saved and workspace created."
+            : "Saved to your Idea Vault.",
+        );
+        onOpenChange(false);
+        if (workspaceId) router.push(`/w/${workspaceId}`);
+        else router.push("/ideas");
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Save failed.");
       }
     });
   }
 
-  const canSend = draft.trim().length > 0 && !loadingReply && !saving;
+  const canSend = draft.trim().length > 0 && !streaming && !saving;
   const userTurnCount = turns.filter((t) => t.role === "user").length;
-  const canSave = userTurnCount >= 2 && !saving;
+  const canSave = userTurnCount >= 2 && !saving && !streaming;
 
-  // Light heuristic for "which axes have been touched" — based on the
-  // conversation so far. Not AI-driven; just visual progress.
   const coveredAxes = AXES.map((axis) => {
     const joined = turns.map((t) => t.text).join(" ").toLowerCase();
     return axis.keywords.some((k) => joined.includes(k));
@@ -186,7 +292,6 @@ export function StartModal({
         className="flex h-[88vh] w-[min(1200px,96vw)] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-none"
         showCloseButton={false}
       >
-        {/* Header */}
         <header className="flex items-center justify-between gap-4 border-b border-border bg-card px-6 py-4">
           <div className="flex items-center gap-3">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-700 text-white shadow-sm">
@@ -212,9 +317,7 @@ export function StartModal({
           </button>
         </header>
 
-        {/* Body — two columns */}
         <div className="grid flex-1 min-h-0 grid-cols-1 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-          {/* Chat column */}
           <section className="flex min-h-0 flex-col border-r border-border">
             <ScrollArea className="flex-1" ref={scrollRef as never}>
               <div className="flex flex-col gap-4 p-6">
@@ -233,15 +336,19 @@ export function StartModal({
                     ))}
                   </div>
                 )}
-                {turns.map((t, i) => (
-                  <Bubble key={i} turn={t} />
-                ))}
-                {loadingReply && (
-                  <div className="flex items-center gap-2 pl-11 text-sm text-muted-foreground">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    Dalil is thinking…
-                  </div>
-                )}
+                {turns.map((t, i) => {
+                  const isLastAssistant =
+                    t.role === "assistant" &&
+                    i === turns.length - 1 &&
+                    streaming;
+                  return (
+                    <Bubble
+                      key={i}
+                      turn={t}
+                      streaming={isLastAssistant}
+                    />
+                  );
+                })}
               </div>
             </ScrollArea>
 
@@ -265,7 +372,7 @@ export function StartModal({
                     handleSubmit(e);
                   }
                 }}
-                disabled={loadingReply || saving}
+                disabled={streaming || saving}
               />
               <Button
                 type="submit"
@@ -274,7 +381,7 @@ export function StartModal({
                 disabled={!canSend}
                 aria-label="Send"
               >
-                {loadingReply ? (
+                {streaming ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <ArrowUp className="h-4 w-4" />
@@ -283,7 +390,6 @@ export function StartModal({
             </form>
           </section>
 
-          {/* Context / progress column */}
           <aside className="flex min-h-0 flex-col bg-secondary/40">
             <ScrollArea className="flex-1">
               <div className="space-y-5 p-6">
@@ -337,11 +443,15 @@ export function StartModal({
                   </p>
                   <ol className="space-y-1 text-xs text-muted-foreground">
                     <li>
-                      1. Gemini summarizes your conversation into approved
-                      idea · audience · problem statement.
+                      1. GPT-4.1-mini summarizes the conversation via
+                      <code className="mx-1 rounded bg-muted px-1 py-0.5 font-mono text-[10px]">
+                        /api/idea-extract
+                      </code>
+                      — validated against a strict Zod schema before save.
                     </li>
                     <li>
-                      2. The idea lands in your Idea Vault, ready to revisit.
+                      2. The idea lands in your Idea Vault with the approved
+                      idea, narrow audience, and problem statement.
                     </li>
                     <li>
                       3. Optionally, Dalil spins up a workspace so you can
@@ -407,8 +517,15 @@ export function StartModal({
   );
 }
 
-function Bubble({ turn }: { turn: Turn }) {
+function Bubble({
+  turn,
+  streaming,
+}: {
+  turn: Turn;
+  streaming?: boolean;
+}) {
   const isAssistant = turn.role === "assistant";
+  const body = turn.text || (streaming ? "…" : "");
   return (
     <div className={isAssistant ? "flex gap-3" : "flex flex-row-reverse gap-3"}>
       <div
@@ -427,7 +544,10 @@ function Bubble({ turn }: { turn: Turn }) {
             : "rounded-tr-sm bg-ink-900 text-ink-50",
         )}
       >
-        {turn.text}
+        {body}
+        {streaming && (
+          <span className="ml-0.5 inline-block h-3 w-1.5 animate-pulse bg-teal-500 align-middle" />
+        )}
       </div>
     </div>
   );
