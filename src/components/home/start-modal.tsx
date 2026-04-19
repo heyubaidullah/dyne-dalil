@@ -27,6 +27,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { LogoMark } from "@/components/layout/logo";
+import { TypewriterBubble } from "@/components/home/typewriter-bubble";
 
 type Turn = { role: "user" | "assistant"; text: string };
 
@@ -531,7 +532,6 @@ function Bubble({
   streaming?: boolean;
 }) {
   const isAssistant = turn.role === "assistant";
-  const body = turn.text || (streaming ? "…" : "");
   return (
     <div className={isAssistant ? "flex gap-3" : "flex flex-row-reverse gap-3"}>
       <div
@@ -544,15 +544,19 @@ function Bubble({
       </div>
       <div
         className={cn(
-          "max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap",
+          "max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed",
           isAssistant
             ? "rounded-tl-sm bg-card shadow-sm ring-1 ring-border"
-            : "rounded-tr-sm bg-ink-900 text-ink-50",
+            : "rounded-tr-sm whitespace-pre-wrap bg-ink-900 text-ink-50",
         )}
       >
-        {body}
-        {streaming && (
-          <span className="ml-0.5 inline-block h-3 w-1.5 animate-pulse bg-teal-500 align-middle" />
+        {isAssistant ? (
+          <TypewriterBubble
+            text={turn.text}
+            streaming={Boolean(streaming)}
+          />
+        ) : (
+          turn.text
         )}
       </div>
     </div>
