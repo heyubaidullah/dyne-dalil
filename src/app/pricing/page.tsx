@@ -114,26 +114,32 @@ export default function PricingPage() {
         </p>
       </div>
 
-      <div className="mt-10 grid grid-cols-1 gap-5 md:grid-cols-3 md:items-stretch">
+      <div className="mt-14 grid grid-cols-1 gap-5 md:grid-cols-3 md:items-stretch">
         {TIERS.map((tier) => (
-          <Card
+          <div
             key={tier.id}
             className={cn(
-              "relative flex h-full flex-col",
-              tier.highlighted
-                ? "border-teal-400 shadow-lg shadow-teal-900/10 ring-1 ring-teal-300/60 dark:border-teal-600 dark:ring-teal-700/60 md:scale-[1.03]"
-                : "",
+              "relative h-full",
+              tier.highlighted ? "md:scale-[1.03]" : "",
             )}
           >
             {tier.highlighted && (
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <Badge className="gap-1 bg-teal-700 text-white shadow-sm dark:bg-teal-600">
+              <div className="absolute -top-3 left-1/2 z-10 -translate-x-1/2">
+                <Badge className="gap-1 whitespace-nowrap bg-teal-700 text-white shadow-md dark:bg-teal-600">
                   <Sparkles className="h-3 w-3" />
                   Most popular
                 </Badge>
               </div>
             )}
-            <CardHeader className="space-y-1 pt-7">
+            <Card
+              className={cn(
+                "flex h-full flex-col overflow-visible",
+                tier.highlighted
+                  ? "border-teal-400 shadow-lg shadow-teal-900/10 ring-1 ring-teal-300/60 dark:border-teal-600 dark:ring-teal-700/60"
+                  : "",
+              )}
+            >
+            <CardHeader className="space-y-1 pt-6">
               <div className="flex items-center justify-between gap-2">
                 <CardTitle className="font-display text-lg">
                   {tier.name}
@@ -194,6 +200,7 @@ export default function PricingPage() {
               </div>
             </CardContent>
           </Card>
+          </div>
         ))}
       </div>
 
