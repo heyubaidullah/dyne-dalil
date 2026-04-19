@@ -26,19 +26,21 @@ export default async function TimelinePage(
   ]);
   if (!workspace) notFound();
 
+  const timelineEntries = entries.filter((entry) => entry.kind !== "signal");
+
   return (
     <PageStub
       eyebrow={workspace.name}
       title="The visible chronology of learning."
-      description="Signals lead to decisions, decisions produce outcomes, outcomes reshape what you test next. This is where the loop becomes visible."
+      description="Decisions produce outcomes, outcomes reshape what you test next. This is where the loop becomes visible."
     >
-      {entries.length === 0 ? (
+      {timelineEntries.length === 0 ? (
         <EmptyTimeline />
       ) : (
         <Card>
           <CardContent className="pt-6">
             <ol className="relative space-y-8 border-l-2 border-border pl-6">
-              {entries.map((e) => (
+              {timelineEntries.map((e) => (
                 <TimelineItem key={`${e.kind}-${e.id}`} entry={e} />
               ))}
             </ol>

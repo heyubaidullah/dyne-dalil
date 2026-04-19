@@ -13,10 +13,12 @@ import {
   GitBranch,
   Inbox,
   TrendingUp,
+  X,
 } from "lucide-react";
 import { formatDateLong } from "@/lib/format";
 import type { RecentEntry } from "@/lib/queries/recent";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 type View = "time" | "decisions";
 
@@ -43,9 +45,95 @@ export function TimelineViews({
   initialView?: View;
 }) {
   const [view, setView] = useState<View>(initialView);
+  const [selectedWorkspaces, setSelectedWorkspaces] = useState<Set<string>>(
+    new Set(),
+  );
+
+  // Extract unique workspaces from entries.
+  const availableWorkspaces = useMemo(() => {
+    const workspaces = new Map<
+      string,
+      { id: string; name: string; count: number }
+    >();
+    for (const entry of entries) {
+      const key = entry.workspace_id;
+      const name = entry.workspace_name ?? "Unnamed";
+      if (!workspaces.has(key)) {
+        workspaces.set(key, { id: key, name, count: 0 });
+      }
+      const ws = workspaces.get(key)!;
+      ws.count += 1;
+    }
+    // When no filter selected, show all; otherwise filter to selected.
+    return Array.from(workspaces.values()).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
+  }, [entries]);
+
+  // Filter entries by selected workspaces (or all if none selected).
+  const filteredEntries = useMemo(() => {
+    if (selectedWorkspaces.size === 0) return entries;
+    return entries.filter((e) => selectedWorkspaces.has(e.workspace_id));
+  }, [entries, selectedWorkspaces]);
+
+  function toggleWorkspace(workspaceId: string) {
+    setSelectedWorkspaces((prev) => {
+      const next = new Set(prev);
+      if (next.has(workspaceId)) {
+        next.delete(workspaceId);
+      } else {
+        next.add(workspaceId);
+      }
+      return next;
+    });
+  }
+
+  function clearFilter() {
+    setSelectedWorkspaces(new Set());
+  }
 
   return (
     <div>
+      {/* Workspace Filter */}
+      <div className="mb-6 space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium">Filter by Dashboard</h3>
+          {selectedWorkspaces.size > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearFilter}
+              className="gap-1 text-xs"
+            >
+              <X className="h-3 w-3" />
+              Clear
+            </Button>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {availableWorkspaces.map((ws) => {
+            const isSelected = selectedWorkspaces.has(ws.id);
+            return (
+              <button
+                key={ws.id}
+                onClick={() => toggleWorkspace(ws.id)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                  isSelected
+                    ? "bg-teal-700 text-white shadow-sm"
+                    : "border border-border bg-background text-foreground hover:bg-secondary",
+                )}
+              >
+                {ws.name}
+                <span className="text-xs opacity-75">({ws.count})</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* View Tabs */}
+      {/* View Tabs */}
       <div
         role="tablist"
         aria-label="Timeline view"
@@ -64,9 +152,9 @@ export function TimelineViews({
       </div>
 
       {view === "time" ? (
-        <ViewByTime entries={entries} />
+        <ViewByTime entries={filteredEntries} />
       ) : (
-        <ViewByDecisions entries={entries} />
+        <ViewByDecisions entries={filteredEntries} />
       )}
     </div>
   );

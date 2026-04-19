@@ -35,17 +35,9 @@ export async function listTimelineForWorkspace(
     const sb = db();
 
     const [
-      { data: signals, error: sErr },
       { data: decisions, error: dErr },
       { data: outcomes, error: oErr },
     ] = await Promise.all([
-      sb
-        .from("signals")
-        .select(
-          `id, created_at, title, source_type,
-           signal_analyses(confirmed_summary, ai_summary)`,
-        )
-        .eq("workspace_id", workspaceId),
       sb
         .from("decisions")
         .select("id, created_at, title, category, rationale")
@@ -59,25 +51,9 @@ export async function listTimelineForWorkspace(
         .eq("decisions.workspace_id", workspaceId),
     ]);
 
-    for (const err of [sErr, dErr, oErr]) if (err) throw err;
+    for (const err of [dErr, oErr]) if (err) throw err;
 
     const entries: TimelineEntry[] = [];
-
-    for (const s of signals ?? []) {
-      const rawAnalysis = (s as { signal_analyses?: unknown }).signal_analyses;
-      const analysis = Array.isArray(rawAnalysis) ? rawAnalysis[0] : rawAnalysis;
-      const body =
-        (analysis as { confirmed_summary?: string | null })?.confirmed_summary ??
-        (analysis as { ai_summary?: string | null })?.ai_summary ??
-        "Raw signal pending review.";
-      entries.push({
-        kind: "signal",
-        id: s.id,
-        date: s.created_at,
-        title: s.title ?? "Untitled input",
-        body,
-      });
-    }
 
     for (const d of decisions ?? []) {
       entries.push({

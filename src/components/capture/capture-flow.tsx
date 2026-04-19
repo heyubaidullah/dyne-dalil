@@ -252,6 +252,7 @@ export function CaptureFlow({ workspaceId }: { workspaceId: string }) {
             similar={similar}
             signalId={signalId}
             loading={recallLoading}
+            onAddAnother={reset}
           />
         )}
       </aside>
@@ -707,11 +708,13 @@ function RecallPanel({
   similar,
   signalId,
   loading,
+  onAddAnother,
 }: {
   workspaceId: string;
   similar: Similar[];
   signalId: string | null;
   loading?: boolean;
+  onAddAnother: () => void;
 }) {
   return (
     <Card>
@@ -768,8 +771,8 @@ function RecallPanel({
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
-          <Button asChild variant="outline">
-            <Link href={`/w/${workspaceId}/capture`}>Capture another signal</Link>
+          <Button variant="outline" onClick={onAddAnother}>
+            Add another feedback
           </Button>
         </div>
       </CardContent>

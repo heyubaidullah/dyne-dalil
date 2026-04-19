@@ -17,18 +17,19 @@ export default async function GlobalTimelinePage({
   const initialView: "time" | "decisions" =
     sp.view === "decisions" ? "decisions" : "time";
   const entries = await listRecentActivity(250).catch(() => []);
+  const timelineEntries = entries.filter((entry) => entry.kind !== "signal");
 
   return (
     <PageStub
       eyebrow="Timeline"
       title="Chronology of learning, across Dashboards."
-      description="Every input, decision, and outcome — in time order, or grouped by category."
+      description="Every decision and outcome — in time order, or grouped by category."
     >
-      {entries.length === 0 ? (
+      {timelineEntries.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
             <p className="max-w-sm text-sm text-muted-foreground">
-              No activity yet. Add feedback or log a decision in a Dashboard
+              No timeline activity yet. Log a decision in a Dashboard
               to see it surface here.
             </p>
             <Button asChild>
@@ -40,7 +41,7 @@ export default async function GlobalTimelinePage({
           </CardContent>
         </Card>
       ) : (
-        <TimelineViews entries={entries} initialView={initialView} />
+        <TimelineViews entries={timelineEntries} initialView={initialView} />
       )}
     </PageStub>
   );

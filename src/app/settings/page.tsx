@@ -14,6 +14,14 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { CheckoutButton } from "@/components/settings/checkout-button";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
   Brain,
   Binoculars,
   Bell,
@@ -24,7 +32,8 @@ import {
   KeyRound,
   Download,
   Trash2,
-  BadgeDollarSign,
+  ArrowUpRight,
+  Zap,
 } from "lucide-react";
 
 export default function SettingsPage() {
@@ -35,35 +44,46 @@ export default function SettingsPage() {
       description="Tune how extraction, recall, and rollups behave across every workspace. Changes apply to new captures — historical memories keep whatever pipeline produced them."
     >
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-3">
-          <CardHeader>
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <CardTitle className="flex items-center gap-2 font-display text-base">
-                  <BadgeDollarSign className="h-4 w-4 text-teal-700" />
-                  Billing
-                </CardTitle>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Accept payments with Stripe Checkout using your configured
-                  product and price.
-                </p>
+        <Dialog>
+          <DialogTrigger className="group lg:col-span-3 rounded-xl border border-teal-900/20 bg-gradient-to-r from-teal-700 via-teal-600 to-emerald-600 p-5 text-left text-white shadow-sm transition hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300">
+            <div className="flex items-center justify-between gap-4">
+              <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-2.5 py-1 text-xs font-medium tracking-wide">
+                <Zap className="h-3.5 w-3.5" />
+                Upgrade
               </div>
-              <Badge variant="outline" className="shrink-0 font-normal">
-                Stripe hosted checkout
-              </Badge>
+              <div className="inline-flex items-center gap-1.5 text-sm font-medium text-white/90">
+                Unlock billing
+                <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+              </div>
             </div>
-          </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
-            <div className="text-sm text-muted-foreground">
-              Configure <code className="font-mono">STRIPE_SECRET_KEY</code>,{" "}
-              <code className="font-mono">STRIPE_PRICE_ID</code>, and{" "}
-              <code className="font-mono">STRIPE_WEBHOOK_SECRET</code> to go live.
-            </div>
-            <div className="w-full sm:w-56">
+            <h2 className="mt-3 font-display text-xl font-semibold tracking-tight sm:text-2xl">
+              Upgrade to Dalil Pro
+            </h2>
+            <p className="mt-1 text-sm text-white/85 sm:text-base">
+              Turn on hosted Stripe checkout to start accepting payments with a
+              smooth, secure billing flow.
+            </p>
+          </DialogTrigger>
+
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Upgrade to Dalil Pro</DialogTitle>
+              <DialogDescription>
+                Continue to Stripe Checkout to activate billing. Your payment is
+                processed on Stripe-hosted pages.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              {/* <p className="text-xs text-muted-foreground">
+                Configure <code className="font-mono">STRIPE_SECRET_KEY</code>,{" "}
+                <code className="font-mono">STRIPE_PRICE_ID</code>, and{" "}
+                <code className="font-mono">STRIPE_WEBHOOK_SECRET</code> to go
+                live.
+              </p> */}
               <CheckoutButton />
             </div>
-          </CardContent>
-        </Card>
+          </DialogContent>
+        </Dialog>
 
         <Card className="lg:col-span-2">
           <CardHeader>
@@ -286,7 +306,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        {/* <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 font-display text-base">
               <KeyRound className="h-4 w-4 text-teal-700" />
@@ -307,7 +327,7 @@ export default function SettingsPage() {
               settings page just reflects what&apos;s connected.
             </p>
           </CardContent>
-        </Card>
+        </Card> */}
 
         <Card>
           <CardHeader>

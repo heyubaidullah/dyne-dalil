@@ -460,7 +460,7 @@ export function StartModal({
                       idea, narrow audience, and problem statement.
                     </li>
                     <li>
-                      3. Optionally, Dalil spins up a workspace so you can
+                      3. Optionally, Dalil spins up a dashboard so you can
                       start capturing real customer signals against it.
                     </li>
                   </ol>
@@ -492,7 +492,7 @@ export function StartModal({
                 ) : (
                   <Sparkles className="h-3.5 w-3.5" />
                 )}
-                Save & create workspace
+                Save & create dashboard
               </Button>
               <Button
                 type="button"
