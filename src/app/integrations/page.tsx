@@ -35,9 +35,9 @@ const INTEGRATIONS: Integration[] = [
     pullsPerWeek: 1450,
   },
   {
-    name: "Gemini",
+    name: "Anthropic Claude",
     description:
-      "Structured extraction, streaming chat, and 1536-dim embeddings.",
+      "Sonnet 4.6 powers extraction, workspace rollup, stage-zero chat, and the similar-issue ranker.",
     category: "AI",
     status: "connected",
     lastSync: "now",

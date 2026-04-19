@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import {
   Sparkles,
   ArrowUp,
@@ -328,15 +327,15 @@ export function StartModal({
                 {turns.length === 1 && (
                   <div className="flex flex-wrap gap-2 pb-2">
                     {STARTER_PROMPTS.map((p) => (
-                      <Badge
+                      <button
                         key={p}
-                        variant="outline"
+                        type="button"
                         onClick={() => send(p)}
-                        className="cursor-pointer gap-1 bg-card hover:bg-secondary"
+                        className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium text-foreground outline-none transition-colors hover:bg-secondary focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         <Sparkles className="h-3 w-3 text-teal-700" />
                         {p}
-                      </Badge>
+                      </button>
                     ))}
                   </div>
                 )}
@@ -410,7 +409,7 @@ export function StartModal({
                           className={cn(
                             "flex items-center gap-2.5 rounded-md border p-2.5 text-sm transition-colors",
                             done
-                              ? "border-teal-300/70 bg-teal-50/60 text-ink-950"
+                              ? "border-teal-300/70 bg-teal-50/60 text-ink-950 dark:border-teal-700/60 dark:bg-teal-950/40 dark:text-ink-50"
                               : "border-border bg-card text-muted-foreground",
                           )}
                         >
@@ -447,7 +446,7 @@ export function StartModal({
                   </p>
                   <ol className="space-y-1 text-xs text-muted-foreground">
                     <li>
-                      1. Gemini 2.5-flash summarizes the conversation via
+                      1. Claude Sonnet 4.6 summarizes the conversation via
                       <code className="mx-1 rounded bg-muted px-1 py-0.5 font-mono text-[10px]">
                         /api/idea-extract
                       </code>

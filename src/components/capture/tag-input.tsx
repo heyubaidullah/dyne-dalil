@@ -45,8 +45,10 @@ export function TagInput({
       <div
         className={cn(
           "flex min-h-10 flex-wrap items-center gap-1.5 rounded-lg border border-input bg-background px-2 py-1.5 text-sm focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/30",
-          tone === "warning" && "focus-within:ring-gold-300/40",
-          tone === "success" && "focus-within:ring-teal-300/40",
+          tone === "warning" &&
+            "focus-within:ring-gold-300/40 dark:focus-within:ring-gold-700/50",
+          tone === "success" &&
+            "focus-within:ring-teal-300/40 dark:focus-within:ring-teal-700/50",
         )}
         onClick={() => inputRef.current?.focus()}
       >

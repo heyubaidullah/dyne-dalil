@@ -34,7 +34,7 @@ export function Footer() {
             <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Menu
             </p>
-            <ul className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+            <ul className="grid grid-cols-1 gap-x-4 gap-y-2 text-sm sm:grid-cols-2">
               {MENU_LINKS.map((l) => (
                 <li key={l.href}>
                   <Link

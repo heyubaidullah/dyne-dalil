@@ -142,7 +142,7 @@ export function CaptureFlow({ workspaceId }: { workspaceId: string }) {
         if (!rawText.trim()) {
           setRawText(`[PDF attached] ${normalized.file_name}`);
         }
-        toast.success(`Attached ${normalized.file_name}. It will be sent directly to Gemini.`);
+        toast.success(`Attached ${normalized.file_name}. Dalil AI will read it directly.`);
       } else {
         setPdfAttachment(null);
         setRawText(normalized.raw_text);
@@ -741,7 +741,7 @@ function RecallPanel({
               {similar.map((s) => (
                 <div
                   key={s.id}
-                  className="rounded-md border border-border p-3 transition-colors hover:border-teal-300 hover:bg-teal-50/40 dark:bg-teal-950/30"
+                  className="rounded-md border border-border p-3 transition-colors hover:border-teal-300 hover:bg-teal-50/40 dark:hover:border-teal-700 dark:hover:bg-teal-950/30"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-sm leading-snug">

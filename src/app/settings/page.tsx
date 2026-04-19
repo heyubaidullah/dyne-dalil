@@ -47,7 +47,7 @@ export default function SettingsPage() {
                 </p>
               </div>
               <Badge variant="outline" className="shrink-0 font-normal">
-                Gemini primary
+                Claude Sonnet 4.6 primary
               </Badge>
             </div>
           </CardHeader>
@@ -55,50 +55,50 @@ export default function SettingsPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Extraction provider</Label>
-                <Select defaultValue="gemini">
+                <Select defaultValue="claude">
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="gemini">Google Gemini</SelectItem>
-                    <SelectItem value="openai">OpenAI</SelectItem>
                     <SelectItem value="claude">Anthropic Claude</SelectItem>
+                    <SelectItem value="openai">OpenAI</SelectItem>
+                    <SelectItem value="gemini">Google Gemini</SelectItem>
                     <SelectItem value="local">Local (llama.cpp)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label>Extraction model</Label>
-                <Select defaultValue="gemini-2.5-flash">
+                <Select defaultValue="claude-sonnet-4-6">
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="gemini-2.5-flash">
-                      gemini-2.5-flash (fast)
+                    <SelectItem value="claude-sonnet-4-6">
+                      claude-sonnet-4-6 (default)
                     </SelectItem>
-                    <SelectItem value="gemini-2.5-flash">
-                      gemini-2.5-flash (deep)
+                    <SelectItem value="claude-haiku-4-5-20251001">
+                      claude-haiku-4-5 (fast)
+                    </SelectItem>
+                    <SelectItem value="claude-opus-4-7">
+                      claude-opus-4-7 (deep)
                     </SelectItem>
                     <SelectItem value="gpt-4.1-mini">gpt-4.1-mini</SelectItem>
-                    <SelectItem value="claude-3-5-haiku-latest">
-                      claude-3.5-haiku
-                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label>Rollup model</Label>
-                <Select defaultValue="gemini-2.5-flash">
+                <Select defaultValue="claude-sonnet-4-6">
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="gemini-2.5-flash">
-                      gemini-2.5-flash
+                    <SelectItem value="claude-sonnet-4-6">
+                      claude-sonnet-4-6
                     </SelectItem>
-                    <SelectItem value="gemini-2.5-flash">
-                      gemini-2.5-flash
+                    <SelectItem value="claude-haiku-4-5-20251001">
+                      claude-haiku-4-5
                     </SelectItem>
                     <SelectItem value="gpt-4.1-mini">gpt-4.1-mini</SelectItem>
                   </SelectContent>
@@ -114,13 +114,14 @@ export default function SettingsPage() {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Embedding model</Label>
+                <Label>Similar-issue recall</Label>
                 <Input
-                  defaultValue="gemini-embedding-001"
+                  defaultValue="Claude ranker"
                   readOnly
                 />
                 <p className="text-xs text-muted-foreground">
-                  1536 dims · pgvector <code className="font-mono">vector(1536)</code>
+                  Anthropic has no embeddings API. Recall runs through Claude
+                  at query time — no vector DB required.
                 </p>
               </div>
               <div className="space-y-2">
@@ -261,9 +262,9 @@ export default function SettingsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
-            <KeyRow label="Gemini" masked="AIza••••••80Jg TE" status="healthy" />
+            <KeyRow label="Anthropic" masked="sk-ant-••••••jQ2jAAA" status="healthy" />
             <KeyRow label="OpenAI" masked="sk-proj-••••••iBdh SIA" status="optional" />
-            <KeyRow label="Anthropic" masked="not configured" status="optional" />
+            <KeyRow label="Gemini" masked="not configured" status="optional" />
             <KeyRow
               label="Supabase service role"
               masked="eyJ••••••ek"

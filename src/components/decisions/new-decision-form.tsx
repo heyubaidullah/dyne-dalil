@@ -506,7 +506,7 @@ export function NewDecisionForm({
                         onClick={() => toggle(s.id)}
                         className={
                           isSelected
-                            ? "block w-full rounded-md border border-teal-400 bg-teal-50/40 p-3 text-left transition-colors"
+                            ? "block w-full rounded-md border border-teal-400 bg-teal-50/40 p-3 text-left transition-colors dark:border-teal-600 dark:bg-teal-950/40"
                             : "block w-full rounded-md border border-border bg-card p-3 text-left transition-colors hover:border-ink-300"
                         }
                       >
