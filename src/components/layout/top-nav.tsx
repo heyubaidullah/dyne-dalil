@@ -22,11 +22,12 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Settings,
   User,
   LogOut,
+  LogIn,
   Plus,
   Menu,
   Bookmark,
@@ -34,6 +35,13 @@ import {
   Sun,
   Monitor,
 } from "lucide-react";
+import { signOutAction } from "@/app/actions/auth";
+
+export type NavUser = {
+  email: string;
+  name: string | null;
+  avatarUrl: string | null;
+};
 
 const NAV_LINKS = [
   { href: "/workspaces", label: "Dashboards" },
@@ -42,12 +50,13 @@ const NAV_LINKS = [
   { href: "/integrations", label: "Integrations" },
 ];
 
-export function TopNav() {
+export function TopNav({ user }: { user: NavUser | null }) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => setMounted(true), []);
 
@@ -171,57 +180,88 @@ export function TopNav() {
             </SheetContent>
           </Sheet>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              className="ml-1 flex items-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              aria-label="Account menu"
-            >
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-teal-700 text-xs text-white dark:bg-teal-600">
-                  FD
-                </AvatarFallback>
-              </Avatar>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-60">
-              <div className="px-2 py-1.5">
-                <p className="text-sm font-medium text-ink-950 dark:text-ink-50">
-                  Founder Demo
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  founder@dalil.app
-                </p>
-              </div>
-              <DropdownMenuSeparator />
-              <DropdownMenuGroup>
-                <DropdownMenuItem onClick={() => router.push("/settings/profile")}>
-                  <User className="mr-2 h-4 w-4" />
-                  Profile
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push("/settings")}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  Settings
-                </DropdownMenuItem>
+          {user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                className="ml-1 flex items-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label="Account menu"
+              >
+                <Avatar className="h-8 w-8">
+                  {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt="" />}
+                  <AvatarFallback className="bg-teal-700 text-xs text-white dark:bg-teal-600">
+                    {initialsOf(user)}
+                  </AvatarFallback>
+                </Avatar>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-60">
+                <div className="px-2 py-1.5">
+                  <p className="truncate text-sm font-medium text-ink-950 dark:text-ink-50">
+                    {user.name ?? user.email}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {user.email}
+                  </p>
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                  <DropdownMenuItem onClick={() => router.push("/settings/profile")}>
+                    <User className="mr-2 h-4 w-4" />
+                    Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => router.push("/settings")}>
+                    <Settings className="mr-2 h-4 w-4" />
+                    Settings
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      // Keep the menu open while we flip the theme, so the
+                      // user can see the change without reopening.
+                      e.preventDefault();
+                      cycleTheme();
+                    }}
+                  >
+                    {themeIcon}
+                    {themeLabel}
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  onClick={(e) => {
-                    // Keep the menu open while we flip the theme, so the
-                    // user can see the change without reopening.
+                  disabled={signingOut}
+                  onClick={async (e) => {
                     e.preventDefault();
-                    cycleTheme();
+                    setSigningOut(true);
+                    try {
+                      await signOutAction();
+                    } catch {
+                      setSigningOut(false);
+                    }
                   }}
                 >
-                  {themeIcon}
-                  {themeLabel}
+                  <LogOut className="mr-2 h-4 w-4" />
+                  {signingOut ? "Signing out…" : "Sign out"}
                 </DropdownMenuItem>
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem disabled>
-                <LogOut className="mr-2 h-4 w-4" />
-                Sign out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button asChild size="sm" variant="outline" className="ml-1 gap-1.5">
+              <Link href="/login">
+                <LogIn className="h-4 w-4" />
+                Sign in
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
     </header>
   );
+}
+
+function initialsOf(user: NavUser): string {
+  const source = user.name?.trim() || user.email;
+  if (!source) return "D";
+  const parts = source.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return source.slice(0, 2).toUpperCase();
 }
