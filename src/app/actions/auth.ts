@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 import {
   DEMO_EMAIL,
@@ -64,14 +64,20 @@ export async function signUpAction(input: {
 }
 
 /**
- * One-click demo sign-in. Tries to sign in as the preset demo user; if the
- * user doesn't exist yet (first run), signs them up, then signs in.
- * Mirrors the `demo@dalil.app` / `dalildemo2026` creds below so testers
- * can also type them manually if they prefer.
+ * One-click demo sign-in. Works even when Supabase has "Confirm email" on:
+ * we use the service role to admin-create the user with email_confirm=true
+ * (skipping the confirmation mail entirely), then sign in normally.
+ *
+ * The flow:
+ *   1. Try to sign in as demo user with the user-level client.
+ *   2. If that fails, use the service-role admin API to either CREATE the
+ *      user (email_confirm=true) or force-confirm an existing unconfirmed
+ *      user, then retry the sign-in.
  */
 export async function signInAsDemoAction(): Promise<AuthResult> {
   const supabase = await createClient();
 
+  // Fast path: demo user already exists + is confirmed.
   const first = await supabase.auth.signInWithPassword({
     email: DEMO_EMAIL,
     password: DEMO_PASSWORD,
@@ -81,28 +87,73 @@ export async function signInAsDemoAction(): Promise<AuthResult> {
     return { ok: true };
   }
 
-  // Credentials probably didn't exist yet — create the demo user, then retry.
-  if (first.error.message.toLowerCase().includes("invalid login credentials")) {
-    const signUp = await supabase.auth.signUp({
-      email: DEMO_EMAIL,
-      password: DEMO_PASSWORD,
-      options: { data: { name: "Founder Demo" } },
-    });
-    if (signUp.error) {
-      return { ok: false, error: signUp.error.message };
-    }
-    const retry = await supabase.auth.signInWithPassword({
-      email: DEMO_EMAIL,
-      password: DEMO_PASSWORD,
-    });
-    if (retry.error) {
-      return { ok: false, error: retry.error.message };
-    }
-    revalidatePath("/", "layout");
-    return { ok: true };
+  // Slow path: provision (or fix) the demo user via the service role.
+  const admin = createServiceClient();
+
+  // Find the user; the admin listUsers endpoint doesn't support filtering,
+  // so we page through a small window. For the demo user this is always
+  // either "not found" or in the first page.
+  let demoUserId: string | null = null;
+  try {
+    const list = await admin.auth.admin.listUsers({ perPage: 200 });
+    const match = list.data?.users?.find(
+      (u) => u.email?.toLowerCase() === DEMO_EMAIL,
+    );
+    if (match) demoUserId = match.id;
+  } catch (e) {
+    return {
+      ok: false,
+      error:
+        "Could not reach Supabase admin API. Is SUPABASE_SERVICE_ROLE_KEY set? " +
+        (e instanceof Error ? e.message : String(e)),
+    };
   }
 
-  return { ok: false, error: first.error.message };
+  if (!demoUserId) {
+    // First-run: create the demo user pre-confirmed.
+    const created = await admin.auth.admin.createUser({
+      email: DEMO_EMAIL,
+      password: DEMO_PASSWORD,
+      email_confirm: true,
+      user_metadata: { name: "Founder Demo", is_demo: true },
+    });
+    if (created.error || !created.data?.user) {
+      return {
+        ok: false,
+        error:
+          created.error?.message ??
+          "Could not create the demo user via the admin API.",
+      };
+    }
+    demoUserId = created.data.user.id;
+  } else {
+    // Existing demo user — force-confirm + reset password to the known
+    // value so we never drift if Supabase ever rotates something.
+    const updated = await admin.auth.admin.updateUserById(demoUserId, {
+      password: DEMO_PASSWORD,
+      email_confirm: true,
+      user_metadata: { name: "Founder Demo", is_demo: true },
+    });
+    if (updated.error) {
+      return {
+        ok: false,
+        error: `Could not update demo user: ${updated.error.message}`,
+      };
+    }
+  }
+
+  const retry = await supabase.auth.signInWithPassword({
+    email: DEMO_EMAIL,
+    password: DEMO_PASSWORD,
+  });
+  if (retry.error) {
+    return {
+      ok: false,
+      error: `Demo sign-in failed after provisioning: ${retry.error.message}`,
+    };
+  }
+  revalidatePath("/", "layout");
+  return { ok: true };
 }
 
 /**
