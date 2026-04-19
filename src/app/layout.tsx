@@ -31,20 +31,23 @@ export const metadata: Metadata = {
     template: "%s · Dalil",
   },
   description:
-    "Dalil is an AI-native founder memory and decision system. Capture customer signals, reconcile understanding, recall similar issues, and log decisions with outcomes.",
+    "Dalil is an AI-native GTM memory for products, teams and companies. Capture customer signals and business feedback, reconcile team understanding, recall similar issues, and log decisions with outcomes.",
   applicationName: "Dalil",
   keywords: [
     "Dalil",
-    "founder memory",
+    "GTM memory",
+    "product memory",
+    "customer feedback",
     "customer signals",
     "decision ledger",
+    "team learning",
     "product discovery",
     "hack.msa",
   ],
   openGraph: {
     title: "Dalil — Evidence for every next move.",
     description:
-      "AI-native founder memory: capture signals, reconcile understanding, recall what worked, decide with evidence.",
+      "AI-native GTM memory for products, teams and companies. Capture feedback, reconcile team understanding, recall what worked, decide with evidence.",
     url: "https://dalil.app",
     siteName: "Dalil",
     type: "website",
@@ -61,7 +64,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Dalil — Evidence for every next move.",
     description:
-      "AI-native founder memory: capture signals, decide with evidence.",
+      "AI-native GTM memory for products, teams and companies. Decide with evidence.",
     images: ["/dalil-logo.webp"],
   },
 };

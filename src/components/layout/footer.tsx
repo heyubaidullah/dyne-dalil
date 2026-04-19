@@ -24,8 +24,8 @@ export function Footer() {
               </span>
             </Link>
             <p className="max-w-sm text-sm text-muted-foreground">
-              AI-native GTM memory and decision platform for founder-led
-              teams. Capture feedback, surface recurring themes, and log
+              AI-native GTM memory for products, teams and companies.
+              Capture feedback, surface recurring themes, and log
               evidence-backed decisions.
             </p>
           </div>
@@ -59,15 +59,15 @@ export function Footer() {
                     href="mailto:hello@dynelabs.co"
                     className="text-ink-700 transition-colors hover:text-teal-700 dark:text-ink-200"
                   >
-                    hello@dynelabs.co
+                    dalil@dynelabs.org
                   </a>
                 </li>
                 <li>
                   <a
-                    href="https://dynelabs.co"
+                    href="https://dynelabs.org"
                     className="text-ink-700 transition-colors hover:text-teal-700 dark:text-ink-200"
                   >
-                    dynelabs.co
+                    www.dynelabs.org
                   </a>
                 </li>
               </ul>
@@ -82,7 +82,7 @@ export function Footer() {
                 target="_blank"
                 rel="noreferrer"
               >
-                Share Dyne with others →
+                Share Dalil with others →
               </a>
             </div>
           </div>
@@ -90,7 +90,11 @@ export function Footer() {
 
         <div className="mt-10 flex flex-col gap-2 border-t border-border pt-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
           <p>
-            Dalil — Developed by Sakib, Sakib &amp; Ubaid at Dyne Labs ©{" "}
+            Dalil — Developed by Sakib, Sakib &amp; Ubaid at <a
+            href="https://dynelabs.org"
+              className="text-ink-700 transition-colors hover:text-teal-700 dark:text-ink-200"
+              >Dyne Labs
+            </a> ©{" "}
             {year}
           </p>
           <p className="opacity-80">

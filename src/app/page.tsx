@@ -45,16 +45,16 @@ export default async function HomePage() {
             className="mb-5 gap-1.5 bg-card/80 backdrop-blur"
           >
             <Sparkles className="h-3.5 w-3.5 text-teal-700" />
-            Dalil · AI-native founder memory
+            Dalil · AI-native GTM memory for products, teams and companies
           </Badge>
           <h1 className="max-w-3xl font-display text-3xl font-semibold leading-[1.1] tracking-tight text-ink-950 dark:text-ink-50 sm:text-4xl md:text-5xl lg:text-6xl">
             Stop losing what the market already told you.
           </h1>
           <p className="mt-4 max-w-2xl text-sm text-muted-foreground sm:mt-5 sm:text-base md:text-lg">
-            Dalil captures customer conversations, reconciles AI and founder
-            understanding into a trusted source of truth, recalls similar
-            issues from the past, and links every decision to the evidence
-            behind it.
+            Dalil captures customer conversations, business feedback,
+            reconciles Dalil AI and team understanding into a trusted
+            source of truth, recalls similar issues from the past, and
+            links every decision to the evidence behind it.
           </p>
 
           <div className="mt-8 w-full max-w-2xl sm:mt-10">
@@ -132,7 +132,7 @@ export default async function HomePage() {
             Built for the 0→1 stage, not the 0.5→1 stage.
           </h2>
           <p className="mt-3 text-muted-foreground">
-            Three primitives that make founder learning compound: capture
+            Three primitives that make team learning compound: capture
             what the market said, surface what happened last time, and link
             every decision to the evidence behind it.
           </p>

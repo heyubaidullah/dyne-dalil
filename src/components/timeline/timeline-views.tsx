@@ -188,10 +188,13 @@ function TabButton({
 }
 
 function ViewByTime({ entries }: { entries: RecentEntry[] }) {
-  // Group by Year > Month.
+  // Group by Year > Month. This view intentionally hides individual
+  // inputs (signals) — the goal here is to see the product's evolution
+  // through decisions and outcomes, not every piece of raw feedback.
   const grouped = useMemo(() => {
     const byYear = new Map<number, Map<number, RecentEntry[]>>();
     for (const e of entries) {
+      if (e.kind === "signal") continue;
       const d = new Date(e.when);
       const y = d.getFullYear();
       const m = d.getMonth();
@@ -230,6 +233,19 @@ function ViewByTime({ entries }: { entries: RecentEntry[] }) {
       else next.add(y);
       return next;
     });
+  }
+
+  if (grouped.length === 0) {
+    return (
+      <Card className="border-dashed">
+        <CardContent className="py-10 text-center">
+          <p className="text-sm text-muted-foreground">
+            No decisions or outcomes logged yet. Inputs land in the Memory
+            Library; this view lights up once you start logging decisions.
+          </p>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (

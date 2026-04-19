@@ -93,7 +93,7 @@ const INTEGRATIONS: Integration[] = [
   },
   {
     name: "HubSpot",
-    description: "Pull deal notes and lost-reason fields into founder memory.",
+    description: "Pull deal notes and lost-reason fields into your GTM memory.",
     category: "CRM",
     status: "coming_soon",
   },
