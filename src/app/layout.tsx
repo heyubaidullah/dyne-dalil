@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Sora, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "@/components/layout/app-shell";
+import { ThemeProvider } from "@/components/layout/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 
@@ -87,10 +88,13 @@ export default function RootLayout({
         sora.variable,
         jetbrains.variable,
       )}
+      suppressHydrationWarning
     >
       <body className="min-h-full">
-        <AppShell>{children}</AppShell>
-        <Toaster richColors position="top-right" />
+        <ThemeProvider>
+          <AppShell>{children}</AppShell>
+          <Toaster richColors position="top-right" />
+        </ThemeProvider>
       </body>
     </html>
   );

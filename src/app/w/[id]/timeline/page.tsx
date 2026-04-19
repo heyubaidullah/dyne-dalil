@@ -99,7 +99,7 @@ function EmptyTimeline() {
   return (
     <Card className="border-dashed">
       <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-teal-50 ring-1 ring-teal-200/60">
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-teal-50 ring-1 ring-teal-200/60 dark:bg-teal-950/30 dark:ring-teal-800/40">
           <Clock className="h-5 w-5 text-teal-700" />
         </span>
         <h3 className="font-display text-lg font-semibold">

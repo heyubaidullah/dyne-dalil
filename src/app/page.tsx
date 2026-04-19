@@ -249,7 +249,7 @@ function PillarCard({
   return (
     <Card className="h-full">
       <CardContent className="flex h-full flex-col gap-3 pt-6">
-        <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-teal-50 ring-1 ring-teal-200/60">
+        <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-teal-50 ring-1 ring-teal-200/60 dark:bg-teal-950/30 dark:ring-teal-800/40">
           {icon}
         </span>
         <h3 className="font-display text-lg font-semibold text-ink-950 dark:text-ink-50">

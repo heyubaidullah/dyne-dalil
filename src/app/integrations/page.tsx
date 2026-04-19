@@ -267,7 +267,7 @@ function MetricTile({
   return (
     <Card
       className={
-        highlight ? "border-teal-300/70 bg-teal-50/40" : undefined
+        highlight ? "border-teal-300/70 bg-teal-50/40 dark:bg-teal-950/30" : undefined
       }
     >
       <CardContent className="pt-5">

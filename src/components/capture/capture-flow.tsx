@@ -741,7 +741,7 @@ function RecallPanel({
               {similar.map((s) => (
                 <div
                   key={s.id}
-                  className="rounded-md border border-border p-3 transition-colors hover:border-teal-300 hover:bg-teal-50/40"
+                  className="rounded-md border border-border p-3 transition-colors hover:border-teal-300 hover:bg-teal-50/40 dark:bg-teal-950/30"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-sm leading-snug">

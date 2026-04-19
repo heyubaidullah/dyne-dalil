@@ -61,7 +61,7 @@ export function StepFlowNav({
                 className={cn(
                   "flex flex-1 items-center gap-3 rounded-lg px-3 py-3 transition-colors",
                   active
-                    ? "bg-teal-50 ring-1 ring-teal-200/70"
+                    ? "bg-teal-50 ring-1 ring-teal-200/70 dark:bg-teal-950/40 dark:ring-teal-800/50"
                     : "hover:bg-secondary",
                 )}
               >
@@ -69,7 +69,7 @@ export function StepFlowNav({
                   className={cn(
                     "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
                     active
-                      ? "bg-teal-700 text-white"
+                      ? "bg-teal-700 text-white dark:bg-teal-600"
                       : "bg-muted text-muted-foreground",
                   )}
                 >
@@ -87,7 +87,7 @@ export function StepFlowNav({
                     <Icon className="h-3.5 w-3.5" />
                     {step.label}
                   </span>
-                  <span className="block text-xs text-muted-foreground">
+                  <span className="mt-0.5 block truncate text-xs text-muted-foreground">
                     {step.description}
                   </span>
                 </span>

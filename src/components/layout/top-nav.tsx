@@ -1,16 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useTheme } from "next-themes";
 import { Logo } from "./logo";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -29,6 +30,9 @@ import {
   Plus,
   Menu,
   Bookmark,
+  Moon,
+  Sun,
+  Monitor,
 } from "lucide-react";
 
 const NAV_LINKS = [
@@ -40,10 +44,41 @@ const NAV_LINKS = [
 
 export function TopNav() {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
 
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + "/");
+
+  function cycleTheme() {
+    // light -> dark -> system -> light
+    const current = theme ?? "system";
+    if (current === "light") setTheme("dark");
+    else if (current === "dark") setTheme("system");
+    else setTheme("light");
+  }
+
+  const themeIcon = !mounted ? (
+    <Monitor className="mr-2 h-4 w-4" />
+  ) : theme === "system" ? (
+    <Monitor className="mr-2 h-4 w-4" />
+  ) : resolvedTheme === "dark" ? (
+    <Moon className="mr-2 h-4 w-4" />
+  ) : (
+    <Sun className="mr-2 h-4 w-4" />
+  );
+
+  const themeLabel = !mounted
+    ? "Theme"
+    : theme === "system"
+      ? "Theme · System"
+      : resolvedTheme === "dark"
+        ? "Dark mode · on"
+        : "Dark mode · off";
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70">
@@ -142,37 +177,42 @@ export function TopNav() {
               aria-label="Account menu"
             >
               <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-teal-700 text-xs text-white">
+                <AvatarFallback className="bg-teal-700 text-xs text-white dark:bg-teal-600">
                   FD
                 </AvatarFallback>
               </Avatar>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-0.5">
-                  <p className="text-sm font-medium">Founder Demo</p>
-                  <p className="text-xs text-muted-foreground">
-                    founder@dalil.app
-                  </p>
-                </div>
-              </DropdownMenuLabel>
+            <DropdownMenuContent align="end" className="w-60">
+              <div className="px-2 py-1.5">
+                <p className="text-sm font-medium text-ink-950 dark:text-ink-50">
+                  Founder Demo
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  founder@dalil.app
+                </p>
+              </div>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                render={
-                  <Link href="/settings/profile">
-                    <User className="mr-2 h-4 w-4" />
-                    Profile
-                  </Link>
-                }
-              />
-              <DropdownMenuItem
-                render={
-                  <Link href="/settings">
-                    <Settings className="mr-2 h-4 w-4" />
-                    Settings
-                  </Link>
-                }
-              />
+              <DropdownMenuGroup>
+                <DropdownMenuItem onClick={() => router.push("/settings/profile")}>
+                  <User className="mr-2 h-4 w-4" />
+                  Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push("/settings")}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  Settings
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    // Keep the menu open while we flip the theme, so the
+                    // user can see the change without reopening.
+                    e.preventDefault();
+                    cycleTheme();
+                  }}
+                >
+                  {themeIcon}
+                  {themeLabel}
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
               <DropdownMenuSeparator />
               <DropdownMenuItem disabled>
                 <LogOut className="mr-2 h-4 w-4" />
