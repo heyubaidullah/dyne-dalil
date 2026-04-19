@@ -148,9 +148,11 @@ export async function streamTextOutput({
         temperature,
       );
     case "claude":
-      throw new AIWrapperError(
-        "UNSUPPORTED_PROVIDER",
-        "Streaming is not implemented for Claude yet.",
+      return streamClaude(
+        selectedModel,
+        systemInstruction,
+        messages,
+        temperature,
       );
     default:
       throw new AIWrapperError(
@@ -211,17 +213,12 @@ export async function generateStructuredOutput<T>({
       );
       break;
     case "claude":
-      if (attachments.length > 0) {
-        throw new AIWrapperError(
-          "UNSUPPORTED_PROVIDER",
-          "Attachments are only implemented for Gemini structured extraction.",
-        );
-      }
       rawJsonString = await callClaude(
         selectedModel,
         systemWithHint,
         userPrompt,
         temperature,
+        attachments,
       );
       break;
     case "local":
@@ -558,8 +555,35 @@ async function callClaude(
   system: string,
   prompt: string,
   temp: number,
+  attachments: Array<{
+    mimeType: string;
+    dataBase64: string;
+    fileName?: string;
+  }> = [],
 ): Promise<string> {
   const apiKey = getRequiredEnv("ANTHROPIC_API_KEY");
+
+  const contentBlocks: Array<
+    | { type: "text"; text: string }
+    | {
+        type: "document";
+        source: { type: "base64"; media_type: string; data: string };
+      }
+  > = [];
+
+  for (const file of attachments) {
+    if (file.mimeType === "application/pdf") {
+      contentBlocks.push({
+        type: "document",
+        source: {
+          type: "base64",
+          media_type: file.mimeType,
+          data: file.dataBase64,
+        },
+      });
+    }
+  }
+  contentBlocks.push({ type: "text", text: prompt });
 
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -573,7 +597,7 @@ async function callClaude(
       max_tokens: 2048,
       temperature: temp,
       system,
-      messages: [{ role: "user", content: prompt }],
+      messages: [{ role: "user", content: contentBlocks }],
     }),
   });
 
@@ -742,6 +766,96 @@ function convertOpenAISseToTextStream(
               };
               const token = parsed.choices?.[0]?.delta?.content;
               if (token) controller.enqueue(encoder.encode(token));
+            } catch {
+              // ignore malformed fragments
+            }
+          }
+        }
+        controller.close();
+      } catch (error) {
+        controller.error(error);
+      } finally {
+        reader.releaseLock();
+      }
+    },
+  });
+}
+
+async function streamClaude(
+  model: string,
+  system: string,
+  messages: Array<{ role: "user" | "assistant"; content: string }>,
+  temp: number,
+): Promise<ReadableStream<Uint8Array>> {
+  const apiKey = getRequiredEnv("ANTHROPIC_API_KEY");
+
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 2048,
+      temperature: temp,
+      system,
+      messages,
+      stream: true,
+    }),
+  });
+
+  if (!response.ok) {
+    throw formatHttpError("claude", response.status, await response.text());
+  }
+  if (!response.body) {
+    throw new AIWrapperError(
+      "EMPTY_PROVIDER_RESPONSE",
+      "Claude returned an empty stream body.",
+    );
+  }
+
+  return convertClaudeSseToTextStream(response.body);
+}
+
+function convertClaudeSseToTextStream(
+  source: ReadableStream<Uint8Array>,
+): ReadableStream<Uint8Array> {
+  const reader = source.getReader();
+  const decoder = new TextDecoder();
+  const encoder = new TextEncoder();
+
+  return new ReadableStream<Uint8Array>({
+    async start(controller) {
+      let buffer = "";
+      try {
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed.startsWith("data:")) continue;
+            const payload = trimmed.slice(5).trim();
+            if (!payload) continue;
+
+            try {
+              const parsed = JSON.parse(payload) as {
+                type?: string;
+                delta?: { type?: string; text?: string };
+              };
+              if (
+                parsed.type === "content_block_delta" &&
+                parsed.delta?.type === "text_delta" &&
+                parsed.delta.text
+              ) {
+                controller.enqueue(encoder.encode(parsed.delta.text));
+              }
             } catch {
               // ignore malformed fragments
             }

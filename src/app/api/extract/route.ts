@@ -36,8 +36,8 @@ export async function POST(request: Request) {
 
   try {
     const result: ExtractionResult = await generateStructuredOutput({
-      provider: "gemini",
-      model: "gemini-2.5-flash",
+      provider: "claude",
+      model: "claude-sonnet-4-6",
       systemInstruction: SYSTEM_PROMPT,
       userPrompt: `Extract insights from the following transcript:\n\n${parsed.data.transcript}`,
       schema: extractionSchema,

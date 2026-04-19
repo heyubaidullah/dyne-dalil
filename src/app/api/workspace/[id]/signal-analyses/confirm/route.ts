@@ -1,7 +1,5 @@
-import { after } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { generateSignalAnalysisEmbedding } from "@/lib/ai/embedding-pipeline";
 
 const requestSchema = z.object({
   signal_id: z.string().min(1),
@@ -84,30 +82,11 @@ export async function POST(
     );
   }
 
-  after(async () => {
-    try {
-      await generateSignalAnalysisEmbedding({
-        signalAnalysisId: saved.id,
-        confirmedSummary: upsertPayload.confirmed_summary,
-        likelySegment: upsertPayload.likely_segment,
-        painPoints: upsertPayload.pain_points,
-        objections: upsertPayload.objections,
-        requests: upsertPayload.requests,
-        quotes: upsertPayload.quotes,
-      });
-    } catch (error) {
-      console.error("[embedding] signal_analyses embedding failed", {
-        signalAnalysisId: saved.id,
-        error,
-      });
-    }
-  });
-
   return Response.json({
     success: true,
     data: {
       signal_analysis_id: saved.id,
-      embedding_status: "queued",
+      embedding_status: "skipped",
     },
   });
 }

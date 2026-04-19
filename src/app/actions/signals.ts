@@ -115,8 +115,8 @@ export async function ingestSignalAction(input: {
   let extraction: Extraction;
   try {
     extraction = await generateStructuredOutput({
-      provider: "gemini",
-      model: "gemini-2.5-flash",
+      provider: "claude",
+      model: "claude-sonnet-4-6",
       systemInstruction: EXTRACTION_SYSTEM,
       userPrompt: parsed.data.pdf_attachment
         ? `Extract structure from this signal. The user attached a PDF document. Read the PDF content directly and extract the schema.`

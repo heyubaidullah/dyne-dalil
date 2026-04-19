@@ -47,8 +47,8 @@ export async function rollupWorkspace(
   }));
 
   return generateStructuredOutput({
-    provider: "gemini",
-    model: "gemini-2.5-flash",
+    provider: "claude",
+    model: "claude-sonnet-4-6",
     systemInstruction: SYSTEM_PROMPT,
     userPrompt: [
       "Analyze this array of canonical customer signals and produce a workspace rollup.",

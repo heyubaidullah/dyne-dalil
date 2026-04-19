@@ -55,8 +55,8 @@ export async function POST(request: Request) {
 
   try {
     const data: IdeaExtractionResult = await generateStructuredOutput({
-      provider: "gemini",
-      model: "gemini-2.5-flash",
+      provider: "claude",
+      model: "claude-sonnet-4-6",
       systemInstruction: SYSTEM_INSTRUCTION,
       userPrompt,
       schema: ideaExtractionSchema,
