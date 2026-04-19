@@ -6,7 +6,7 @@ export async function POST() {
     data: {
       mode: "no-op",
       message:
-        "Embeddings are no longer required. Similar-signal recall runs through Claude at query time.",
+        "Embeddings are no longer required. Similar-signal recall runs through Dalil AI at query time.",
     },
   });
 }

@@ -449,7 +449,7 @@ export function StartModal({
                   </p>
                   <ol className="space-y-1 text-xs text-muted-foreground">
                     <li>
-                      1. Claude Sonnet 4.6 summarizes the conversation via
+                      1. Dalil AI summarizes the conversation via
                       <code className="mx-1 rounded bg-muted px-1 py-0.5 font-mono text-[10px]">
                         /api/idea-extract
                       </code>

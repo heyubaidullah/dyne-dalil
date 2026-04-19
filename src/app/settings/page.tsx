@@ -99,60 +99,59 @@ export default function SettingsPage() {
                 </p>
               </div>
               <Badge variant="outline" className="shrink-0 font-normal">
-                Claude Sonnet 4.6 primary
+                Dalil AI · Balanced
               </Badge>
             </div>
           </CardHeader>
           <CardContent className="space-y-5">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Extraction provider</Label>
-                <Select defaultValue="claude">
+                <Label>Extraction engine</Label>
+                <Select defaultValue="dalil">
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="claude">Anthropic Claude</SelectItem>
-                    <SelectItem value="openai">OpenAI</SelectItem>
-                    <SelectItem value="gemini">Google Gemini</SelectItem>
-                    <SelectItem value="local">Local (llama.cpp)</SelectItem>
+                    <SelectItem value="dalil">Dalil AI (managed)</SelectItem>
+                    <SelectItem value="local">Self-hosted (local)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Extraction model</Label>
-                <Select defaultValue="claude-sonnet-4-6">
+                <Label>Extraction tier</Label>
+                <Select defaultValue="balanced">
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="claude-sonnet-4-6">
-                      claude-sonnet-4-6 (default)
+                    <SelectItem value="balanced">
+                      Dalil AI · Balanced (default)
                     </SelectItem>
-                    <SelectItem value="claude-haiku-4-5-20251001">
-                      claude-haiku-4-5 (fast)
+                    <SelectItem value="fast">
+                      Dalil AI · Fast
                     </SelectItem>
-                    <SelectItem value="claude-opus-4-7">
-                      claude-opus-4-7 (deep)
+                    <SelectItem value="deep">
+                      Dalil AI · Deep
                     </SelectItem>
-                    <SelectItem value="gpt-4.1-mini">gpt-4.1-mini</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Rollup model</Label>
-                <Select defaultValue="claude-sonnet-4-6">
+                <Label>Rollup tier</Label>
+                <Select defaultValue="balanced">
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="claude-sonnet-4-6">
-                      claude-sonnet-4-6
+                    <SelectItem value="balanced">
+                      Dalil AI · Balanced
                     </SelectItem>
-                    <SelectItem value="claude-haiku-4-5-20251001">
-                      claude-haiku-4-5
+                    <SelectItem value="fast">
+                      Dalil AI · Fast
                     </SelectItem>
-                    <SelectItem value="gpt-4.1-mini">gpt-4.1-mini</SelectItem>
+                    <SelectItem value="deep">
+                      Dalil AI · Deep
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -167,23 +166,20 @@ export default function SettingsPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Similar-issue recall</Label>
-                <Input
-                  defaultValue="Claude ranker"
-                  readOnly
-                />
+                <Input defaultValue="Dalil AI ranker" readOnly />
                 <p className="text-xs text-muted-foreground">
-                  Anthropic has no embeddings API. Recall runs through Claude
-                  at query time — no vector DB required.
+                  Recall runs through Dalil AI at query time — no vector
+                  database required, no embedding step, no stale indexes.
                 </p>
               </div>
               <div className="space-y-2">
-                <Label>Fallback provider</Label>
-                <Select defaultValue="openai">
+                <Label>Fallback tier</Label>
+                <Select defaultValue="fast">
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="openai">OpenAI (if set)</SelectItem>
+                    <SelectItem value="fast">Dalil AI · Fast</SelectItem>
                     <SelectItem value="none">None</SelectItem>
                   </SelectContent>
                 </Select>

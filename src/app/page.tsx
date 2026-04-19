@@ -36,7 +36,7 @@ export default async function HomePage() {
     <>
       <section className="relative dalil-gradient-hero">
         <div className="dalil-grid-bg absolute inset-0 opacity-60" aria-hidden />
-        <div className="relative mx-auto flex max-w-6xl flex-col items-center px-4 pt-14 pb-12 text-center sm:px-6 sm:pt-20 sm:pb-16 md:pt-28">
+        <div className="relative mx-auto flex max-w-6xl flex-col items-center px-4 pt-6 pb-12 text-center sm:px-6 sm:pt-8 sm:pb-16 md:pt-10">
           <LogoMark size={72} priority className="mb-5 sm:mb-6" />
           <Badge
             variant="outline"

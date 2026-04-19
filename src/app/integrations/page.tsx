@@ -35,9 +35,9 @@ const INTEGRATIONS: Integration[] = [
     pullsPerWeek: 1450,
   },
   {
-    name: "Anthropic Claude",
+    name: "Dalil AI engine",
     description:
-      "Sonnet 4.6 powers extraction, workspace rollup, stage-zero chat, and the similar-issue ranker.",
+      "Powers extraction, workspace rollup, the stage-zero assistant, and similar-issue recall across every Dashboard.",
     category: "AI",
     status: "connected",
     lastSync: "now",

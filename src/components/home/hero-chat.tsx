@@ -13,8 +13,8 @@ const PROMPTS = [
 
 /**
  * Homepage hero chat trigger. The whole bar is clickable — tapping
- * anywhere opens the Dalil Start modal where the real Claude-backed
- * Dalil Assistant conversation lives. Keyboard-accessible via Enter / Space.
+ * anywhere opens the Dalil Start modal where the Dalil Assistant
+ * conversation lives. Keyboard-accessible via Enter / Space.
  */
 export function HeroChat() {
   const [open, setOpen] = useState(false);

@@ -239,7 +239,7 @@ export default function PricingPage() {
         />
         <FaqCard
           title="How does Dalil AI work?"
-          body="Every plan uses Claude Sonnet 4.6 for extraction, rollup, and similar-issue recall. Growth unlocks deeper context and priority routing."
+          body="Every plan uses the Dalil AI engine for extraction, rollup, and similar-issue recall. Growth unlocks deeper context and priority routing."
         />
         <FaqCard
           title="Can I switch plans?"
