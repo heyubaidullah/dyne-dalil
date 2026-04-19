@@ -8,14 +8,16 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import {
   AlertTriangle,
+  CheckCircle2,
   Loader2,
   LogIn,
+  Mail,
   Sparkles,
 } from "lucide-react";
 import {
   signInAction,
   signInAsDemoAction,
-  signInWithGoogleAction,
+  sendMagicLinkAction,
 } from "@/app/actions/auth";
 import { DEMO_EMAIL, DEMO_PASSWORD } from "@/lib/auth/constants";
 
@@ -30,9 +32,10 @@ export function LoginForm({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(initialError ?? null);
+  const [magicSentTo, setMagicSentTo] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [demoPending, startDemo] = useTransition();
-  const [googlePending, startGoogle] = useTransition();
+  const [magicPending, startMagic] = useTransition();
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -65,20 +68,30 @@ export function LoginForm({
     });
   }
 
-  function signInWithGoogle() {
+  function sendMagicLink() {
     setError(null);
-    startGoogle(async () => {
-      const res = await signInWithGoogleAction(next);
+    const trimmed = email.trim();
+    if (!trimmed) {
+      setError("Enter your email to receive a magic link.");
+      toast.error("Enter your email first.");
+      return;
+    }
+    startMagic(async () => {
+      const res = await sendMagicLinkAction({
+        email: trimmed,
+        nextPath: next,
+      });
       if (!res.ok) {
         setError(res.error);
         toast.error(res.error);
         return;
       }
-      window.location.href = res.url;
+      setMagicSentTo(trimmed);
+      toast.success(`Magic link sent to ${trimmed}.`);
     });
   }
 
-  const disabled = pending || demoPending || googlePending;
+  const disabled = pending || demoPending || magicPending;
 
   return (
     <div className="space-y-5">
@@ -131,20 +144,30 @@ export function LoginForm({
         <span className="relative bg-card px-3">or</span>
       </div>
 
-      <Button
-        type="button"
-        variant="outline"
-        className="w-full gap-2"
-        disabled={disabled}
-        onClick={signInWithGoogle}
-      >
-        {googlePending ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <GoogleIcon className="h-4 w-4" />
-        )}
-        Continue with Google
-      </Button>
+      {magicSentTo ? (
+        <div className="flex items-start gap-2 rounded-md border border-teal-300/60 bg-teal-50/60 p-3 text-xs text-ink-950 dark:border-teal-700/60 dark:bg-teal-950/40 dark:text-ink-50">
+          <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-teal-700" />
+          <span>
+            Magic link sent to <strong className="font-medium">{magicSentTo}</strong>.
+            Open it from the same browser to finish signing in.
+          </span>
+        </div>
+      ) : (
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full gap-2"
+          disabled={disabled}
+          onClick={sendMagicLink}
+        >
+          {magicPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Mail className="h-4 w-4" />
+          )}
+          Send me a magic link
+        </Button>
+      )}
 
       <div className="rounded-lg border border-dashed border-teal-300/70 bg-teal-50/60 p-3 text-xs dark:border-teal-700/60 dark:bg-teal-950/40">
         <p className="mb-2 flex items-center gap-1.5 font-medium text-ink-950 dark:text-ink-50">
@@ -177,13 +200,3 @@ export function LoginForm({
   );
 }
 
-function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden fill="currentColor" {...props}>
-      <path
-        fill="#EA4335"
-        d="M12 11v3.2h5.4c-.2 1.3-1.7 3.8-5.4 3.8-3.2 0-5.9-2.7-5.9-6s2.7-6 5.9-6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.8 3.4 14.6 2.5 12 2.5 6.7 2.5 2.5 6.7 2.5 12S6.7 21.5 12 21.5c6.9 0 9.5-4.8 9.5-7.3 0-.5 0-.9-.1-1.2H12z"
-      />
-    </svg>
-  );
-}

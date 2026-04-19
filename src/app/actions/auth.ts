@@ -105,31 +105,38 @@ export async function signInAsDemoAction(): Promise<AuthResult> {
   return { ok: false, error: first.error.message };
 }
 
-export async function signInWithGoogleAction(
-  nextPath?: string,
-): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+/**
+ * Send a one-click magic link to the given email. No passwords, no third-party
+ * provider config. Supabase emails a tokenized link that bounces back through
+ * /auth/callback and creates a session.
+ */
+export async function sendMagicLinkAction(input: {
+  email: string;
+  nextPath?: string;
+}): Promise<AuthResult> {
+  const email = input.email.trim().toLowerCase();
+  if (!email) {
+    return { ok: false, error: "Enter the email you want to sign in with." };
+  }
+
   const supabase = await createClient();
   const appUrl = env.NEXT_PUBLIC_APP_URL?.trim() || "http://localhost:3000";
+  const nextPath = input.nextPath;
   const callback = `${appUrl.replace(/\/$/, "")}/auth/callback${
     nextPath && nextPath.startsWith("/") ? `?next=${encodeURIComponent(nextPath)}` : ""
   }`;
 
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
     options: {
-      redirectTo: callback,
-      queryParams: { access_type: "offline", prompt: "consent" },
+      emailRedirectTo: callback,
+      shouldCreateUser: true,
     },
   });
-  if (error || !data?.url) {
-    return {
-      ok: false,
-      error:
-        error?.message ??
-        "Could not start Google sign-in. Enable the Google provider in Supabase Auth settings.",
-    };
+  if (error) {
+    return { ok: false, error: error.message };
   }
-  return { ok: true, url: data.url };
+  return { ok: true };
 }
 
 export async function signOutAction(): Promise<void> {
