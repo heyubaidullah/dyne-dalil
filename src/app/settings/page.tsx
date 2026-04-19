@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { CheckoutButton } from "@/components/settings/checkout-button";
 import {
   Brain,
   Binoculars,
@@ -23,6 +24,7 @@ import {
   KeyRound,
   Download,
   Trash2,
+  BadgeDollarSign,
 } from "lucide-react";
 
 export default function SettingsPage() {
@@ -33,6 +35,36 @@ export default function SettingsPage() {
       description="Tune how extraction, recall, and rollups behave across every workspace. Changes apply to new captures — historical memories keep whatever pipeline produced them."
     >
       <div className="grid gap-6 lg:grid-cols-3">
+        <Card className="lg:col-span-3">
+          <CardHeader>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <CardTitle className="flex items-center gap-2 font-display text-base">
+                  <BadgeDollarSign className="h-4 w-4 text-teal-700" />
+                  Billing
+                </CardTitle>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Accept payments with Stripe Checkout using your configured
+                  product and price.
+                </p>
+              </div>
+              <Badge variant="outline" className="shrink-0 font-normal">
+                Stripe hosted checkout
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
+            <div className="text-sm text-muted-foreground">
+              Configure <code className="font-mono">STRIPE_SECRET_KEY</code>,{" "}
+              <code className="font-mono">STRIPE_PRICE_ID</code>, and{" "}
+              <code className="font-mono">STRIPE_WEBHOOK_SECRET</code> to go live.
+            </div>
+            <div className="w-full sm:w-56">
+              <CheckoutButton />
+            </div>
+          </CardContent>
+        </Card>
+
         <Card className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-start justify-between gap-3">

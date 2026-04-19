@@ -417,19 +417,37 @@ happens after the core workflow is stable, not before.
   rollup (structured via `responseSchema`), `text-embedding-004` for
   semantic recall vectors. Lazy-initialized so paths that don't need AI
   don't require the key.
+- **Payments.** Stripe Checkout + webhook endpoint for post-payment events.
 - **Env.** zod-validated via `src/lib/env.ts`; empty values treated as unset.
 
 ## Quick start
 
 ```bash
 cp .env.example .env.local
-# fill in the Supabase + provider keys
+# fill in the Supabase + provider keys (+ Stripe vars if enabling billing)
 
 npm install
 npm run dev
 ```
 
 App runs at http://localhost:3000.
+
+## Stripe setup
+
+1. Stripe Dashboard → **Developers → API keys**.
+2. Copy your secret key into `.env.local` as `STRIPE_SECRET_KEY`.
+3. Create a Product + Price in Stripe, then set `STRIPE_PRICE_ID`.
+4. Set `NEXT_PUBLIC_APP_URL=http://localhost:3000` for local development.
+5. Start webhook forwarding:
+
+```bash
+stripe listen --forward-to localhost:3000/api/stripe/webhook
+```
+
+6. Copy the webhook signing secret shown by Stripe CLI into
+  `STRIPE_WEBHOOK_SECRET`.
+
+Payment entrypoint in the app: **Settings → Billing → Pay with Stripe**.
 
 ## Supabase setup
 
@@ -480,6 +498,14 @@ Then copy your credentials into `.env`:
 | `/ideas` | Idea Vault — approved stage-zero ideas |
 | `/integrations` | Mocked connectors (Gong, Zoom, Notion, Slack, Linear…) |
 | `/settings`, `/settings/profile` | Workspace and account preferences |
+| `/settings/billing/success`, `/settings/billing/cancel` | Post-checkout pages |
+
+## API routes
+
+| Route | Purpose |
+|---|---|
+| `/api/stripe/checkout` | Creates a Stripe Checkout Session for the configured price |
+| `/api/stripe/webhook` | Verifies Stripe signatures and handles payment events |
 
 ## Directory map
 
