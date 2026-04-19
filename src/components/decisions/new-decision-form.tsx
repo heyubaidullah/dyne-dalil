@@ -44,7 +44,10 @@ type RecurringTheme = {
   key: string;
   label: string;
   count: number;
+  managed: boolean;
   rationaleHint: string;
+  descriptionHint: string;
+  expectedOutcomeHint: string;
   evidenceIds: string[];
 };
 
@@ -136,6 +139,16 @@ export function NewDecisionForm({
     [signals, selected],
   );
 
+  const managedThemes = useMemo(
+    () => recurringThemes.filter((t) => t.managed),
+    [recurringThemes],
+  );
+
+  const pendingThemes = useMemo(
+    () => recurringThemes.filter((t) => !t.managed),
+    [recurringThemes],
+  );
+
   function toggle(id: string) {
     setSelected((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
@@ -146,7 +159,8 @@ export function NewDecisionForm({
     setActiveTheme(theme.key);
     // Prefill title + category + rationale from the theme.
     if (!title.trim()) {
-      setTitle(`Address ${theme.label.toLowerCase()}`);
+      const action = inferActionVerb(theme.label);
+      setTitle(`${action} ${theme.label.toLowerCase()}`);
     }
     if (!category) {
       setCategory(theme.key);
@@ -165,6 +179,22 @@ export function NewDecisionForm({
         ]
           .filter(Boolean)
           .join("\n"),
+      );
+    }
+    if (!description.trim()) {
+      const descriptionSeed = theme.descriptionHint.trim();
+      setDescription(
+        descriptionSeed
+          ? `Make a specific change to address ${theme.label.toLowerCase()}: ${descriptionSeed}`
+          : `Make a specific change to address ${theme.label.toLowerCase()} based on the linked evidence.`,
+      );
+    }
+    if (!expected.trim()) {
+      const outcomeSeed = theme.expectedOutcomeHint.trim();
+      setExpected(
+        outcomeSeed
+          ? `We should see ${outcomeSeed} improve after this change.`
+          : `This should reduce friction tied to ${theme.label.toLowerCase()} and make the next outcome easier to measure.`,
       );
     }
     // Auto-select any evidence signals tied to the theme.
@@ -421,33 +451,83 @@ export function NewDecisionForm({
               ) : (
                 <>
                   <p className="text-xs text-muted-foreground">
-                    Ranked most-recurring first. Click a theme to auto-draft the
-                    decision and link its evidence.
+                    Themes are grouped by whether they already have at least one
+                    linked decision in this workspace.
                   </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {recurringThemes.map((t) => {
-                      const active = activeTheme === t.key;
-                      return (
-                        <button
-                          key={t.key}
-                          type="button"
-                          onClick={() => applyTheme(t)}
-                          className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
-                            active
-                              ? "border-teal-400 bg-teal-50 text-ink-950 dark:bg-teal-950/40 dark:text-ink-50"
-                              : "border-border bg-card hover:border-teal-300 hover:bg-teal-50/50"
-                          }`}
-                        >
-                          <Sparkles className="h-3 w-3 text-teal-700" />
-                          {t.label}
-                          {t.count > 0 && (
-                            <span className="text-[10px] text-muted-foreground">
-                              · {t.count}
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="space-y-2 rounded-md border border-border p-2">
+                      <p className="px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Managed
+                      </p>
+                      {managedThemes.length === 0 ? (
+                        <p className="px-1 text-xs text-muted-foreground">
+                          No managed themes yet.
+                        </p>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                          {managedThemes.map((t) => {
+                            const active = activeTheme === t.key;
+                            return (
+                              <button
+                                key={t.key}
+                                type="button"
+                                onClick={() => applyTheme(t)}
+                                className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+                                  active
+                                    ? "border-teal-400 bg-teal-50 text-ink-950 dark:bg-teal-950/40 dark:text-ink-50"
+                                    : "border-border bg-card hover:border-teal-300 hover:bg-teal-50/50"
+                                }`}
+                              >
+                                <Sparkles className="h-3 w-3 text-teal-700" />
+                                {t.label}
+                                {t.count > 0 && (
+                                  <span className="text-[10px] text-muted-foreground">
+                                    · {t.count}
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-2 rounded-md border border-border p-2">
+                      <p className="px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Pending
+                      </p>
+                      {pendingThemes.length === 0 ? (
+                        <p className="px-1 text-xs text-muted-foreground">
+                          No pending themes right now.
+                        </p>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                          {pendingThemes.map((t) => {
+                            const active = activeTheme === t.key;
+                            return (
+                              <button
+                                key={t.key}
+                                type="button"
+                                onClick={() => applyTheme(t)}
+                                className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+                                  active
+                                    ? "border-teal-400 bg-teal-50 text-ink-950 dark:bg-teal-950/40 dark:text-ink-50"
+                                    : "border-border bg-card hover:border-teal-300 hover:bg-teal-50/50"
+                                }`}
+                              >
+                                <Sparkles className="h-3 w-3 text-teal-700" />
+                                {t.label}
+                                {t.count > 0 && (
+                                  <span className="text-[10px] text-muted-foreground">
+                                    · {t.count}
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </>
               )}
@@ -626,4 +706,14 @@ export function NewDecisionForm({
       </Card>
     </div>
   );
+}
+
+function inferActionVerb(label: string) {
+  const lower = label.toLowerCase();
+  if (/(pricing|fees|cost|price)/.test(lower)) return "Reduce";
+  if (/(onboarding|activation|signup|setup)/.test(lower)) return "Shorten";
+  if (/(bug|issue|bugs|errors|reliability|latency)/.test(lower)) return "Fix";
+  if (/(channel|distribution|outreach|marketing)/.test(lower)) return "Test";
+  if (/(feature|roadmap|product|request)/.test(lower)) return "Ship";
+  return "Address";
 }

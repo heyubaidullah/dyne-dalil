@@ -3,6 +3,7 @@ import { PageStub } from "@/components/layout/page-stub";
 import { NewDecisionForm } from "@/components/decisions/new-decision-form";
 import { getWorkspace } from "@/lib/queries/workspaces";
 import { listSignalsForWorkspace } from "@/lib/queries/signals";
+import { listDecisionsForWorkspace } from "@/lib/queries/decisions";
 import { rollupWorkspace } from "@/lib/ai/workspace-rollup";
 
 export default async function NewDecisionPage(
@@ -15,11 +16,18 @@ export default async function NewDecisionPage(
   const preselectedTheme =
     typeof searchParams?.theme === "string" ? searchParams.theme : undefined;
 
-  const [workspace, signals] = await Promise.all([
+  const [workspace, signals, decisions] = await Promise.all([
     getWorkspace(id),
     listSignalsForWorkspace(id),
+    listDecisionsForWorkspace(id),
   ]);
   if (!workspace) notFound();
+
+  const usedThemeKeys = new Set(
+    decisions
+      .map((d) => d.category?.trim().toLowerCase())
+      .filter((c): c is string => Boolean(c)),
+  );
 
   const signalOptions = signals.map((s) => ({
     id: s.id,
@@ -37,7 +45,10 @@ export default async function NewDecisionPage(
     key: string;
     label: string;
     count: number;
+    managed: boolean;
     rationaleHint: string;
+    descriptionHint: string;
+    expectedOutcomeHint: string;
     evidenceIds: string[];
   };
   const byCategory = new Map<string, ThemeSeed>();
@@ -49,7 +60,10 @@ export default async function NewDecisionPage(
         key,
         label: key,
         count: 0,
+        managed: usedThemeKeys.has(key.toLowerCase()),
         rationaleHint: "",
+        descriptionHint: "",
+        expectedOutcomeHint: "",
         evidenceIds: [],
       };
     seed.count += 1;
@@ -57,6 +71,19 @@ export default async function NewDecisionPage(
       seed.rationaleHint = seed.rationaleHint
         ? `${seed.rationaleHint}\n- ${s.analysis.confirmed_summary}`
         : `- ${s.analysis.confirmed_summary}`;
+    }
+    if (s.analysis?.confirmed_summary && seed.descriptionHint.length < 300) {
+      seed.descriptionHint = seed.descriptionHint
+        ? `${seed.descriptionHint} ${s.analysis.confirmed_summary}`
+        : s.analysis.confirmed_summary;
+    }
+    if (seed.expectedOutcomeHint.length < 300) {
+      const segment = s.analysis?.likely_segment?.trim();
+      if (segment) {
+        seed.expectedOutcomeHint = seed.expectedOutcomeHint
+          ? `${seed.expectedOutcomeHint}; ${segment}`
+          : segment;
+      }
     }
     seed.evidenceIds.push(s.id);
     byCategory.set(key, seed);
@@ -90,7 +117,10 @@ export default async function NewDecisionPage(
           key: t,
           label: t,
           count: 0,
+          managed: usedThemeKeys.has(t.toLowerCase()),
           rationaleHint: "",
+          descriptionHint: "",
+          expectedOutcomeHint: "",
           evidenceIds: [],
         }));
       } catch {

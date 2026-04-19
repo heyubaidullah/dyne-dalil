@@ -13,6 +13,9 @@ import {
   Clock,
   ArrowRight,
   Quote,
+  PlusCircle,
+  MessageSquarePlus,
+  Vault,
 } from "lucide-react";
 import { globalStats } from "@/lib/queries/workspaces";
 import { listRecentActivity } from "@/lib/queries/recent";
@@ -61,24 +64,35 @@ export default async function HomePage() {
           <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-sm sm:mt-6">
             <Button
               asChild
-              variant="outline"
-              className="bg-card/60 backdrop-blur"
+              size="lg"
+              className="gap-1.5 bg-teal-700 text-white shadow-lg shadow-teal-900/20 hover:bg-teal-600"
             >
-              <Link href="/onboarding">Create Dashboard</Link>
+              <Link href="/onboarding">
+                <PlusCircle className="h-4 w-4" />
+                Create Dashboard
+              </Link>
             </Button>
             <Button
               asChild
               variant="outline"
-              className="bg-card/60 backdrop-blur"
+              size="lg"
+              className="gap-1.5 border-teal-300/80 bg-card/95 shadow-sm hover:bg-teal-50"
             >
-              <Link href="/workspaces">Add feedback</Link>
+              <Link href="/workspaces">
+                <MessageSquarePlus className="h-4 w-4" />
+                Add feedback
+              </Link>
             </Button>
             <Button
               asChild
               variant="outline"
-              className="bg-card/60 backdrop-blur"
+              size="lg"
+              className="gap-1.5 border-teal-300/80 bg-card/95 shadow-sm hover:bg-teal-50"
             >
-              <Link href="/ideas">Open Idea Vault</Link>
+              <Link href="/ideas">
+                <Vault className="h-4 w-4" />
+                Open Idea Vault
+              </Link>
             </Button>
           </div>
         </div>

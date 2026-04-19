@@ -35,6 +35,10 @@ const SYSTEM_PROMPT = `You are Dalil Assistant, embedded inside a "Log a Decisio
 
 Rules:
 - Keep the founder's language and evidence when rewriting. Don't invent numbers.
+- When active_theme is present, turn it into a concrete, feasible decision. Do not leave the title as a generic theme label or an abstract summary.
+- Decision should reflect an actionable step with specific details.
+- Description should be a concise summary of the change, not a restatement of the rationale.
+- If the founder is selecting a recurring theme, update description and expected_outcome too when they are empty or still generic. Make description a short description of the actual change and expected_outcome a realistic measurable result.
 - If the founder asks you to "make the expected outcome measurable", write something specific and realistic based on the evidence snippets if provided.
 - Category should be a short noun/department ("Product", "Operations", "Pricing", "Positioning") or a product-specific category like "Zipper issue".
 - Rationale is the why. Description is the what (a short paragraph describing the change itself).
@@ -71,6 +75,9 @@ export async function POST(
 
   const userPrompt = [
     active_theme ? `Active recurring theme: ${active_theme}` : null,
+    active_theme
+      ? "Use the recurring theme to draft a specific decision with an actionable title, a short description of the change, and a realistic measurable expected outcome."
+      : null,
     "Current form state:",
     JSON.stringify(current_form, null, 2),
     evidenceBlock ? `Linked evidence:\n${evidenceBlock}` : null,
