@@ -62,18 +62,21 @@ export async function listSignalsForWorkspace(
     return data.map((row) => {
       const rawAnalysis = row.signal_analyses;
       const analysis = Array.isArray(rawAnalysis) ? rawAnalysis[0] : rawAnalysis;
-      const { signal_analyses: _dropped, ...signal } = row as typeof row & {
-        signal_analyses: unknown;
-      };
       return {
-        ...(signal as SignalRow),
+        id: row.id,
+        workspace_id: row.workspace_id,
+        title: row.title,
+        source_type: row.source_type,
+        raw_text: row.raw_text,
+        created_at: row.created_at,
+        feedback_type: row.feedback_type as SignalRow["feedback_type"],
+        category: row.category,
         analysis: (analysis as SignalAnalysisRow) ?? null,
       };
     });
   } catch (e) {
     if (isSchemaMissingError(e)) return demoSignals(workspaceId);
     if (process.env.NODE_ENV !== "production") {
-      // eslint-disable-next-line no-console
       console.warn(
         `[demo-fallback] listSignalsForWorkspace: ${e instanceof Error ? e.message : e}`,
       );
@@ -99,10 +102,17 @@ export async function getSignal(id: string): Promise<SignalWithAnalysis | null> 
     if (!data) return null;
     const rawAnalysis = (data as { signal_analyses?: unknown }).signal_analyses;
     const analysis = Array.isArray(rawAnalysis) ? rawAnalysis[0] : rawAnalysis;
-    const { signal_analyses: _dropped, ...signal } = data as typeof data & {
-      signal_analyses: unknown;
+    return {
+      id: data.id,
+      workspace_id: data.workspace_id,
+      title: data.title,
+      source_type: data.source_type,
+      raw_text: data.raw_text,
+      created_at: data.created_at,
+      feedback_type: data.feedback_type as SignalRow["feedback_type"],
+      category: data.category,
+      analysis: (analysis as SignalAnalysisRow) ?? null,
     };
-    return { ...(signal as SignalRow), analysis: (analysis as SignalAnalysisRow) ?? null };
   } catch {
     return null;
   }

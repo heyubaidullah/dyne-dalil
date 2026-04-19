@@ -102,7 +102,6 @@ export async function listDecisionsForWorkspace(
   } catch (e) {
     if (isSchemaMissingError(e)) return demoDecisions(workspaceId);
     if (process.env.NODE_ENV !== "production") {
-      // eslint-disable-next-line no-console
       console.warn(
         `[demo-fallback] listDecisionsForWorkspace: ${e instanceof Error ? e.message : e}`,
       );

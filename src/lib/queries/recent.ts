@@ -30,7 +30,6 @@ export async function listRecentActivity(limit = 6): Promise<RecentEntry[]> {
   } catch (e) {
     if (isSchemaMissingError(e)) return demoRecentActivity(limit);
     if (process.env.NODE_ENV !== "production") {
-      // eslint-disable-next-line no-console
       console.warn(
         `[demo-fallback] listRecentActivity: ${e instanceof Error ? e.message : e}`,
       );

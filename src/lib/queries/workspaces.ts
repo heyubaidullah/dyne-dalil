@@ -154,7 +154,6 @@ export async function globalStats(): Promise<{
 function logFallback(source: string, err: unknown) {
   if (process.env.NODE_ENV !== "production") {
     const msg = err instanceof Error ? err.message : String(err);
-    // eslint-disable-next-line no-console
     console.warn(`[demo-fallback] ${source}: ${msg}`);
   }
 }

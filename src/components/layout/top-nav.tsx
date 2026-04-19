@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
 import { Logo } from "./logo";
 import { cn } from "@/lib/utils";
@@ -55,10 +55,12 @@ export function TopNav({ user }: { user: NavUser | null }) {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { theme, setTheme, resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
   const [signingOut, setSigningOut] = useState(false);
-
-  useEffect(() => setMounted(true), []);
 
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + "/");

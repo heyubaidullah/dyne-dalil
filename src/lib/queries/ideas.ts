@@ -27,7 +27,6 @@ export async function listIdeas(): Promise<IdeaRow[]> {
   } catch (e) {
     if (isSchemaMissingError(e)) return DEMO_IDEAS;
     if (process.env.NODE_ENV !== "production") {
-      // eslint-disable-next-line no-console
       console.warn(
         `[demo-fallback] listIdeas: ${e instanceof Error ? e.message : e}`,
       );

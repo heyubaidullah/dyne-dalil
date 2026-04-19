@@ -95,17 +95,20 @@ export function StartModal({
   const seededRef = useRef<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  useEffect(() => {
-    if (!open) {
-      abortRef.current?.abort();
-      abortRef.current = null;
-      setTurns([FIRST_MESSAGE]);
-      setDraft("");
-      setStreaming(false);
-      setOfferedSave(false);
-      seededRef.current = null;
-    }
-  }, [open]);
+  function resetConversation() {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setTurns([FIRST_MESSAGE]);
+    setDraft("");
+    setStreaming(false);
+    setOfferedSave(false);
+    seededRef.current = null;
+  }
+
+  function handleOpenChange(next: boolean) {
+    if (!next) resetConversation();
+    onOpenChange(next);
+  }
 
   useEffect(() => {
     if (!open || !seedText) return;
@@ -269,7 +272,7 @@ export function StartModal({
             ? "Idea saved and workspace created."
             : "Saved to your Idea Vault.",
         );
-        onOpenChange(false);
+        handleOpenChange(false);
         if (workspaceId) router.push(`/w/${workspaceId}`);
         else router.push("/ideas");
       } catch (e) {
@@ -289,7 +292,7 @@ export function StartModal({
   const coveredCount = coveredAxes.filter(Boolean).length;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         className="flex h-[88vh] w-[min(1200px,96vw)] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-none"
         showCloseButton={false}
@@ -309,7 +312,7 @@ export function StartModal({
           </div>
           <button
             type="button"
-            onClick={() => onOpenChange(false)}
+            onClick={() => handleOpenChange(false)}
             aria-label="Close"
             className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
           >

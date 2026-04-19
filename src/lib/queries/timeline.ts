@@ -109,7 +109,6 @@ export async function listTimelineForWorkspace(
   } catch (e) {
     if (isSchemaMissingError(e)) return demoTimeline(workspaceId);
     if (process.env.NODE_ENV !== "production") {
-      // eslint-disable-next-line no-console
       console.warn(
         `[demo-fallback] listTimelineForWorkspace: ${e instanceof Error ? e.message : e}`,
       );

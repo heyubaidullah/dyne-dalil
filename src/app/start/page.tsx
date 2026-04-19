@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { PageStub } from "@/components/layout/page-stub";
 import { Card, CardContent } from "@/components/ui/card";
@@ -41,17 +41,9 @@ const AXES = [
 
 function StartContent() {
   const searchParams = useSearchParams();
-  const [open, setOpen] = useState(false);
-  const [seedText, setSeedText] = useState<string | undefined>(undefined);
-
-  // On mount, if ?q= is present, seed + open the modal immediately. Otherwise
-  // still auto-open so users land inside the real guided flow.
-  useEffect(() => {
-    const q = searchParams.get("q");
-    if (q && q.trim()) setSeedText(q.trim());
-    setOpen(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const initialSeed = searchParams.get("q")?.trim() || undefined;
+  const [open, setOpen] = useState(true);
+  const [seedText, setSeedText] = useState<string | undefined>(initialSeed);
 
   function launch(prompt?: string) {
     setSeedText(prompt);
