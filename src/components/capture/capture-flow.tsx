@@ -45,11 +45,19 @@ type Similar = {
 
 type Step = "ingest" | "extracting" | "review" | "confirmed";
 
+type PdfAttachment = {
+  file_name: string;
+  mime_type: "application/pdf";
+  data_base64: string;
+};
+
 export function CaptureFlow({ workspaceId }: { workspaceId: string }) {
   const [step, setStep] = useState<Step>("ingest");
   const [title, setTitle] = useState("");
   const [sourceType, setSourceType] = useState<string>("");
   const [rawText, setRawText] = useState("");
+  const [normalizingFile, setNormalizingFile] = useState(false);
+  const [pdfAttachment, setPdfAttachment] = useState<PdfAttachment | null>(null);
 
   const [signalId, setSignalId] = useState<string | null>(null);
   const [extraction, setExtraction] = useState<Extraction | null>(null);
@@ -63,6 +71,8 @@ export function CaptureFlow({ workspaceId }: { workspaceId: string }) {
     setTitle("");
     setSourceType("");
     setRawText("");
+    setNormalizingFile(false);
+    setPdfAttachment(null);
     setSignalId(null);
     setExtraction(null);
     setFounderNotes("");
@@ -90,10 +100,11 @@ export function CaptureFlow({ workspaceId }: { workspaceId: string }) {
   }
 
   function runExtraction() {
-    if (rawText.trim().length < 20) {
+    if (rawText.trim().length < 20 && !pdfAttachment) {
       toast.error("Paste at least a sentence or two before extracting.");
       return;
     }
+
     setStep("extracting");
     startTransition(async () => {
       const res = await ingestSignalAction({
@@ -101,6 +112,7 @@ export function CaptureFlow({ workspaceId }: { workspaceId: string }) {
         title: title.trim(),
         source_type: sourceType,
         raw_text: rawText,
+        pdf_attachment: pdfAttachment ?? undefined,
       });
       if (!res.ok) {
         toast.error(res.error);
@@ -111,6 +123,35 @@ export function CaptureFlow({ workspaceId }: { workspaceId: string }) {
       setExtraction(res.extraction);
       setStep("review");
     });
+  }
+
+  async function handleDroppedFile(file: File) {
+    setNormalizingFile(true);
+    try {
+      const normalized = await normalizeUploadFile(file);
+      if (normalized.kind === "pdf") {
+        setPdfAttachment({
+          file_name: normalized.file_name,
+          mime_type: normalized.mime_type,
+          data_base64: normalized.data_base64,
+        });
+        if (!rawText.trim()) {
+          setRawText(`[PDF attached] ${normalized.file_name}`);
+        }
+        toast.success(`Attached ${normalized.file_name}. It will be sent directly to Gemini.`);
+      } else {
+        setPdfAttachment(null);
+        setRawText(normalized.raw_text);
+        if (normalized.truncated) {
+          toast.message("Input was truncated to 200,000 characters before extraction.");
+        }
+        toast.success(`Loaded ${file.name} into the text box.`);
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not parse dropped file.");
+    } finally {
+      setNormalizingFile(false);
+    }
   }
 
   function confirmExtraction() {
@@ -172,6 +213,9 @@ export function CaptureFlow({ workspaceId }: { workspaceId: string }) {
             rawText={rawText}
             onRawChange={setRawText}
             pending={pending}
+            normalizingFile={normalizingFile}
+            pdfAttachment={pdfAttachment}
+            onFileDrop={handleDroppedFile}
             onSubmit={runExtraction}
           />
         )}
@@ -207,6 +251,42 @@ export function CaptureFlow({ workspaceId }: { workspaceId: string }) {
   );
 }
 
+async function normalizeUploadFile(file: File): Promise<
+  | { kind: "text"; raw_text: string; truncated: boolean; file_name?: string }
+  | {
+      kind: "pdf";
+      file_name: string;
+      mime_type: "application/pdf";
+      data_base64: string;
+    }
+> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const res = await fetch("/api/capture/normalize", {
+    method: "POST",
+    body: formData,
+  });
+  const body = (await res.json()) as
+    | {
+        success: true;
+        data:
+          | { kind: "text"; raw_text: string; truncated: boolean; file_name?: string }
+          | {
+              kind: "pdf";
+              file_name: string;
+              mime_type: "application/pdf";
+              data_base64: string;
+            };
+      }
+    | { success: false; error: string };
+
+  if (!res.ok || !body.success) {
+    throw new Error("error" in body ? body.error : "Could not parse uploaded file.");
+  }
+  return body.data;
+}
+
 function IngestCard({
   title,
   onTitleChange,
@@ -215,6 +295,9 @@ function IngestCard({
   rawText,
   onRawChange,
   pending,
+  normalizingFile,
+  pdfAttachment,
+  onFileDrop,
   onSubmit,
 }: {
   title: string;
@@ -224,8 +307,22 @@ function IngestCard({
   rawText: string;
   onRawChange: (v: string) => void;
   pending: boolean;
+  normalizingFile: boolean;
+  pdfAttachment: PdfAttachment | null;
+  onFileDrop: (file: File) => Promise<void>;
   onSubmit: () => void;
 }) {
+  const [dragActive, setDragActive] = useState(false);
+
+  async function handleDrop(e: React.DragEvent<HTMLTextAreaElement>) {
+    e.preventDefault();
+    setDragActive(false);
+
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    await onFileDrop(file);
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -268,17 +365,36 @@ function IngestCard({
             rows={14}
             value={rawText}
             onChange={(e) => onRawChange(e.target.value)}
-            placeholder="Paste the transcript, notes, or recap. Rough is fine — Dalil handles the structure."
-            className="font-mono text-sm"
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragActive(true);
+            }}
+            onDragLeave={() => setDragActive(false)}
+            onDrop={handleDrop}
+            placeholder="Paste text or drop txt/md/pdf/docx/json files here."
+            className={`font-mono text-sm ${
+              dragActive ? "border-teal-500 ring-2 ring-teal-500/30" : ""
+            }`}
           />
           <p className="text-xs text-muted-foreground">
             {rawText.length} characters · extraction works best with 200+ characters of real customer language.
           </p>
+          <p className="text-xs text-muted-foreground">
+            Drop a file into the box and Dalil will auto-detect it. Docs max 10MB. PDFs are attached directly to Gemini.
+          </p>
+          {pdfAttachment && (
+            <p className="text-xs text-muted-foreground">
+              PDF attached: {pdfAttachment.file_name}. Extraction will read the PDF directly.
+            </p>
+          )}
+          {normalizingFile && (
+            <p className="text-xs text-muted-foreground">Parsing dropped file…</p>
+          )}
         </div>
         <div className="flex items-center justify-end gap-2">
           <Button
             onClick={onSubmit}
-            disabled={pending || rawText.trim().length < 20}
+            disabled={pending || normalizingFile || (rawText.trim().length < 20 && !pdfAttachment)}
             className="gap-1.5"
           >
             <Sparkles className="h-4 w-4" />

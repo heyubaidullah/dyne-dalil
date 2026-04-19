@@ -77,8 +77,8 @@ export default function SettingsPage() {
                     <SelectItem value="gemini-2.5-flash">
                       gemini-2.5-flash (fast)
                     </SelectItem>
-                    <SelectItem value="gemini-2.5-pro">
-                      gemini-2.5-pro (deep)
+                    <SelectItem value="gemini-2.5-flash">
+                      gemini-2.5-flash (deep)
                     </SelectItem>
                     <SelectItem value="gpt-4.1-mini">gpt-4.1-mini</SelectItem>
                     <SelectItem value="claude-3-5-haiku-latest">
@@ -97,8 +97,8 @@ export default function SettingsPage() {
                     <SelectItem value="gemini-2.5-flash">
                       gemini-2.5-flash
                     </SelectItem>
-                    <SelectItem value="gemini-2.5-pro">
-                      gemini-2.5-pro
+                    <SelectItem value="gemini-2.5-flash">
+                      gemini-2.5-flash
                     </SelectItem>
                     <SelectItem value="gpt-4.1-mini">gpt-4.1-mini</SelectItem>
                   </SelectContent>
