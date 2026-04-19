@@ -5,13 +5,15 @@ const requestSchema = z.object({
   signal_id: z.string().min(1),
   confirmed_summary: z.string().min(1),
   founder_notes: z.string().optional(),
+  positive_feedback: z.array(z.string()).optional(),
+  negative_feedback: z.array(z.string()).optional(),
   pain_points: z.array(z.string()).optional(),
-  objections: z.array(z.string()).optional(),
   requests: z.array(z.string()).optional(),
   urgency: z.enum(["low", "medium", "high"]).optional(),
   likely_segment: z.string().optional(),
   quotes: z.array(z.string()).optional(),
   confidence: z.string().optional(),
+  category: z.string().optional(),
 });
 
 export async function POST(
@@ -59,8 +61,9 @@ export async function POST(
     signal_id: payload.signal_id,
     confirmed_summary: payload.confirmed_summary,
     founder_notes: payload.founder_notes ?? null,
+    positive_feedback: payload.positive_feedback ?? null,
+    negative_feedback: payload.negative_feedback ?? null,
     pain_points: payload.pain_points ?? null,
-    objections: payload.objections ?? null,
     requests: payload.requests ?? null,
     urgency: payload.urgency ?? null,
     likely_segment: payload.likely_segment ?? null,
@@ -80,6 +83,13 @@ export async function POST(
       { success: false, error: "Failed to save canonical memory" },
       { status: 500 },
     );
+  }
+
+  if (payload.category) {
+    await supabase
+      .from("signals")
+      .update({ category: payload.category })
+      .eq("id", payload.signal_id);
   }
 
   return Response.json({

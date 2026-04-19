@@ -10,9 +10,9 @@ export default async function CapturePage(props: PageProps<"/w/[id]/capture">) {
 
   return (
     <PageStub
-      eyebrow={workspace.name}
+      eyebrow={`${workspace.name} · Add Feedback`}
       title="From messy notes to confirmed memory."
-      description="Paste a transcript, notes, or a rough recap. Dalil extracts structure with Claude, you confirm the AI's reading, and the final version becomes your canonical memory — indexed for semantic recall."
+      description="Paste a transcript, a note, a DM, a review, or drop a file. Dalil AI extracts positive feedback, negative feedback, pain points, requests, and a reusable category. You confirm — the final version becomes your canonical memory."
     >
       <CaptureFlow workspaceId={id} />
     </PageStub>

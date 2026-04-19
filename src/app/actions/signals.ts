@@ -17,24 +17,27 @@ import {
  * canonical memory and queues an embedding via the embedding pipeline.
  */
 
-const EXTRACTION_SYSTEM = `You are Dalil's extraction engine. Your job is to turn raw founder-gathered customer text — call transcripts, rough notes, DMs, survey snippets — into structured, founder-readable evidence.
+const EXTRACTION_SYSTEM = `You are Dalil AI's extraction engine. Your job is to turn raw customer feedback — call transcripts, rough notes, DMs, survey snippets, support tickets, review text — into structured, founder-readable evidence.
 
 Style rules:
 - Be conservative. If something isn't clearly stated, don't invent it.
 - Keep the customer's voice in quotes. Lightly clean filler words only if unreadable.
-- Pain points = real problems named or implied, not vibes. Prefer specific over abstract.
-- Objections = things that would make this person say no.
-- Requests = what they explicitly asked for.
+- positive_feedback = things the customer liked, praised, or gave credit for. Empty array if none.
+- negative_feedback = things the customer disliked, complained about, or was disappointed by. Empty array if none.
+- pain_points = the underlying problems causing the negative feedback (or the friction behind a feature request). Specific over abstract.
+- requests = what they explicitly asked for.
+- category = a short, reusable noun phrase that groups this feedback with similar future feedback in the same workspace (e.g. "Zipper issue", "Cloth quality issue", "Onboarding friction", "Pricing objection"). Reuse category names when the theme repeats. Keep to under 4 words.
 - Confidence should reflect how much raw data you have. One short note → at most "medium".
-- Segment should be the narrowest honest description (e.g. "Campus Muslim student" > "Student").
 
 Return only the structured JSON.`;
 
 const ExtractionSchema = z.object({
   summary: z.string(),
+  positive_feedback: z.array(z.string()),
+  negative_feedback: z.array(z.string()),
   pain_points: z.array(z.string()),
-  objections: z.array(z.string()),
   requests: z.array(z.string()),
+  category: z.string(),
   urgency: z.enum(["low", "medium", "high"]),
   likely_segment: z.string(),
   quotes: z.array(z.string()),
@@ -48,6 +51,7 @@ const ingestSchema = z.object({
   title: z.string().trim().max(160).optional().or(z.literal("")),
   source_type: z.string().trim().max(40).optional().or(z.literal("")),
   raw_text: z.string().trim().optional().or(z.literal("")),
+  feedback_type: z.enum(["qualitative", "quantitative"]).optional(),
   pdf_attachment: z
     .object({
       file_name: z.string().trim().min(1),
@@ -78,6 +82,7 @@ export async function ingestSignalAction(input: {
   title?: string;
   source_type?: string;
   raw_text?: string;
+  feedback_type?: "qualitative" | "quantitative";
   pdf_attachment?: {
     file_name: string;
     mime_type: "application/pdf";
@@ -104,6 +109,7 @@ export async function ingestSignalAction(input: {
       title: parsed.data.title?.length ? parsed.data.title : null,
       source_type: parsed.data.source_type?.length ? parsed.data.source_type : null,
       raw_text: storageRawText,
+      feedback_type: parsed.data.feedback_type ?? "qualitative",
     })
     .select("id")
     .single();
@@ -143,13 +149,22 @@ export async function ingestSignalAction(input: {
     return { ok: false, error: message };
   }
 
+  // Persist the AI-assigned category onto the signal for Dashboard category boxes.
+  if (extraction.category) {
+    await sb
+      .from("signals")
+      .update({ category: extraction.category })
+      .eq("id", signal.id);
+  }
+
   // Store the AI proposal so the Memory Library can show "pending review".
   const { error: analysisErr } = await sb.from("signal_analyses").insert({
     signal_id: signal.id,
     ai_summary: extraction.summary,
     confirmed_summary: extraction.summary,
+    positive_feedback: extraction.positive_feedback,
+    negative_feedback: extraction.negative_feedback,
     pain_points: extraction.pain_points,
-    objections: extraction.objections,
     requests: extraction.requests,
     urgency: extraction.urgency,
     likely_segment: extraction.likely_segment,

@@ -8,39 +8,96 @@ import { Inbox, Plus } from "lucide-react";
 import { getWorkspace } from "@/lib/queries/workspaces";
 import { listSignalsForWorkspace } from "@/lib/queries/signals";
 import { formatDateLong } from "@/lib/format";
+import { StepFlowNav } from "@/components/layout/step-flow-nav";
 
 export const revalidate = 0;
 
-export default async function MemoryLibraryPage(
-  props: PageProps<"/w/[id]/memory">,
-) {
-  const { id } = await props.params;
+export default async function MemoryLibraryPage(props: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ category?: string }>;
+}) {
+  const [{ id }, searchParams] = await Promise.all([
+    props.params,
+    props.searchParams,
+  ]);
+  const categoryFilter = searchParams?.category?.trim();
   const [workspace, signals] = await Promise.all([
     getWorkspace(id),
     listSignalsForWorkspace(id),
   ]);
   if (!workspace) notFound();
 
-  const confirmed = signals.filter((s) => s.analysis?.confirmed_at);
-  const pending = signals.filter((s) => !s.analysis?.confirmed_at);
+  const filtered = categoryFilter
+    ? signals.filter(
+        (s) =>
+          (s.category ?? "").trim().toLowerCase() ===
+          categoryFilter.toLowerCase(),
+      )
+    : signals;
+
+  const confirmed = filtered.filter((s) => s.analysis?.confirmed_at);
+  const pending = filtered.filter((s) => !s.analysis?.confirmed_at);
+
+  const allCategories = Array.from(
+    new Set(
+      signals
+        .map((s) => s.category?.trim())
+        .filter((c): c is string => Boolean(c)),
+    ),
+  ).sort();
 
   return (
     <PageStub
-      eyebrow={workspace.name}
-      title="Canonical memories, searchable and sourced."
-      description="Every confirmed customer signal — after you've reviewed the AI extraction. The source of truth for recall and rollups."
+      eyebrow={`${workspace.name} · Memory Library`}
+      title={
+        categoryFilter
+          ? `${categoryFilter} memories`
+          : "Canonical memories, searchable and sourced."
+      }
+      description="Every confirmed piece of customer feedback — after you've reviewed the Dalil AI extraction. The source of truth for recall and decisions."
     >
-      <div className="mb-4 flex items-center justify-end gap-2">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        {allCategories.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            <Link href={`/w/${id}/memory`}>
+              <Badge
+                variant={categoryFilter ? "outline" : "default"}
+                className="cursor-pointer"
+              >
+                All
+              </Badge>
+            </Link>
+            {allCategories.map((c) => (
+              <Link
+                key={c}
+                href={`/w/${id}/memory?category=${encodeURIComponent(c)}`}
+              >
+                <Badge
+                  variant={
+                    categoryFilter?.toLowerCase() === c.toLowerCase()
+                      ? "default"
+                      : "outline"
+                  }
+                  className="cursor-pointer"
+                >
+                  {c}
+                </Badge>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <span />
+        )}
         <Button asChild>
           <Link href={`/w/${id}/capture`}>
             <Plus className="mr-1 h-4 w-4" />
-            New signal
+            Add New Feedback
           </Link>
         </Button>
       </div>
 
-      {signals.length === 0 ? (
-        <EmptyMemory workspaceId={id} />
+      {filtered.length === 0 ? (
+        <EmptyMemory workspaceId={id} filtered={Boolean(categoryFilter)} />
       ) : (
         <>
           {pending.length > 0 && (
@@ -50,12 +107,7 @@ export default async function MemoryLibraryPage(
               </h2>
               <div className="grid gap-4 md:grid-cols-2">
                 {pending.map((s) => (
-                  <MemoryCard
-                    key={s.id}
-                    workspaceId={id}
-                    signal={s}
-                    pending
-                  />
+                  <MemoryCard key={s.id} workspaceId={id} signal={s} pending />
                 ))}
               </div>
             </section>
@@ -75,6 +127,8 @@ export default async function MemoryLibraryPage(
           )}
         </>
       )}
+
+      <StepFlowNav workspaceId={id} current="memory" />
     </PageStub>
   );
 }
@@ -95,20 +149,33 @@ function MemoryCard({
       <CardHeader>
         <div className="flex items-start justify-between gap-2">
           <CardTitle className="font-display text-base leading-tight">
-            {signal.title ?? "Untitled signal"}
+            {signal.title ?? "Untitled input"}
           </CardTitle>
-          {pending ? (
-            <Badge variant="outline" className="shrink-0">
-              Pending review
-            </Badge>
-          ) : (
-            <Badge
-              variant={confidence === "high" ? "default" : "secondary"}
-              className="shrink-0 capitalize"
-            >
-              {confidence}
-            </Badge>
-          )}
+          <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+            {signal.category && (
+              <Badge variant="outline" className="font-normal">
+                {signal.category}
+              </Badge>
+            )}
+            {signal.feedback_type && (
+              <Badge
+                variant="secondary"
+                className="font-normal capitalize"
+              >
+                {signal.feedback_type}
+              </Badge>
+            )}
+            {pending ? (
+              <Badge variant="outline">Pending review</Badge>
+            ) : (
+              <Badge
+                variant={confidence === "high" ? "default" : "secondary"}
+                className="capitalize"
+              >
+                {confidence}
+              </Badge>
+            )}
+          </div>
         </div>
         <p className="text-xs text-muted-foreground">
           {formatDateLong(signal.created_at)}
@@ -124,14 +191,26 @@ function MemoryCard({
             &ldquo;{a.quotes[0]}&rdquo;
           </blockquote>
         )}
+        {a?.positive_feedback && a.positive_feedback.length > 0 && (
+          <FeedbackRow
+            label="Positive feedback"
+            tone="positive"
+            items={a.positive_feedback}
+          />
+        )}
+        {a?.negative_feedback && a.negative_feedback.length > 0 && (
+          <FeedbackRow
+            label="Negative feedback"
+            tone="negative"
+            items={a.negative_feedback}
+          />
+        )}
         {a?.pain_points && a.pain_points.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {a.pain_points.slice(0, 4).map((p) => (
-              <Badge key={p} variant="secondary" className="font-normal">
-                {p}
-              </Badge>
-            ))}
-          </div>
+          <FeedbackRow
+            label="Pain points"
+            tone="pain"
+            items={a.pain_points}
+          />
         )}
         {pending && (
           <div className="pt-1">
@@ -145,7 +224,47 @@ function MemoryCard({
   );
 }
 
-function EmptyMemory({ workspaceId }: { workspaceId: string }) {
+function FeedbackRow({
+  label,
+  tone,
+  items,
+}: {
+  label: string;
+  tone: "positive" | "negative" | "pain";
+  items: string[];
+}) {
+  const toneClass =
+    tone === "positive"
+      ? "border-emerald-300/70 bg-emerald-50 text-emerald-900 dark:border-emerald-700/60 dark:bg-emerald-950/40 dark:text-emerald-100"
+      : tone === "negative"
+        ? "border-rose-300/70 bg-rose-50 text-rose-900 dark:border-rose-700/60 dark:bg-rose-950/40 dark:text-rose-100"
+        : "border-amber-300/70 bg-amber-50 text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-100";
+  return (
+    <div>
+      <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {items.slice(0, 4).map((p) => (
+          <span
+            key={p}
+            className={`rounded-md border px-2 py-0.5 text-xs font-normal ${toneClass}`}
+          >
+            {p}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function EmptyMemory({
+  workspaceId,
+  filtered,
+}: {
+  workspaceId: string;
+  filtered?: boolean;
+}) {
   return (
     <Card className="border-dashed">
       <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
@@ -154,17 +273,17 @@ function EmptyMemory({ workspaceId }: { workspaceId: string }) {
         </span>
         <div className="space-y-1">
           <h3 className="font-display text-lg font-semibold">
-            No memories yet.
+            {filtered ? "No memories in this category yet." : "No memories yet."}
           </h3>
           <p className="max-w-sm text-sm text-muted-foreground">
-            Capture your first customer signal and confirm the AI extraction.
+            Add your first piece of feedback and confirm the Dalil AI extraction.
             It will land here as canonical memory.
           </p>
         </div>
         <Button asChild>
           <Link href={`/w/${workspaceId}/capture`}>
             <Plus className="mr-1 h-4 w-4" />
-            Capture a signal
+            Add New Feedback
           </Link>
         </Button>
       </CardContent>

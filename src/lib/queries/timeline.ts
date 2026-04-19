@@ -74,7 +74,7 @@ export async function listTimelineForWorkspace(
         kind: "signal",
         id: s.id,
         date: s.created_at,
-        title: s.title ?? "Untitled signal",
+        title: s.title ?? "Untitled input",
         body,
       });
     }

@@ -10,6 +10,8 @@ export type SignalRow = {
   source_type: string | null;
   raw_text: string;
   created_at: string;
+  feedback_type?: "qualitative" | "quantitative" | null;
+  category?: string | null;
 };
 
 export type SignalAnalysisRow = {
@@ -18,6 +20,8 @@ export type SignalAnalysisRow = {
   ai_summary: string | null;
   founder_notes: string | null;
   confirmed_summary: string | null;
+  positive_feedback?: string[] | null;
+  negative_feedback?: string[] | null;
   pain_points: string[] | null;
   objections: string[] | null;
   requests: string[] | null;
@@ -41,10 +45,10 @@ export async function listSignalsForWorkspace(
     const { data, error } = await sb
       .from("signals")
       .select(
-        `id, workspace_id, title, source_type, raw_text, created_at,
+        `id, workspace_id, title, source_type, raw_text, created_at, feedback_type, category,
          signal_analyses(id, signal_id, ai_summary, founder_notes, confirmed_summary,
-                         pain_points, objections, requests, urgency, likely_segment,
-                         quotes, confidence, confirmed_at, created_at)`,
+                         positive_feedback, negative_feedback, pain_points, objections, requests,
+                         urgency, likely_segment, quotes, confidence, confirmed_at, created_at)`,
       )
       .eq("workspace_id", workspaceId)
       .order("created_at", { ascending: false });
@@ -84,10 +88,10 @@ export async function getSignal(id: string): Promise<SignalWithAnalysis | null> 
     const { data, error } = await sb
       .from("signals")
       .select(
-        `id, workspace_id, title, source_type, raw_text, created_at,
+        `id, workspace_id, title, source_type, raw_text, created_at, feedback_type, category,
          signal_analyses(id, signal_id, ai_summary, founder_notes, confirmed_summary,
-                         pain_points, objections, requests, urgency, likely_segment,
-                         quotes, confidence, confirmed_at, created_at)`,
+                         positive_feedback, negative_feedback, pain_points, objections, requests,
+                         urgency, likely_segment, quotes, confidence, confirmed_at, created_at)`,
       )
       .eq("id", id)
       .maybeSingle();

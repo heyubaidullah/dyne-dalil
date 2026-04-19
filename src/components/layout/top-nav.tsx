@@ -32,8 +32,8 @@ import {
 } from "lucide-react";
 
 const NAV_LINKS = [
-  { href: "/workspaces", label: "Workspaces" },
-  { href: "/memory", label: "Memory" },
+  { href: "/workspaces", label: "Dashboards" },
+  { href: "/memory", label: "Memory Library" },
   { href: "/timeline", label: "Timeline" },
   { href: "/integrations", label: "Integrations" },
 ];
@@ -79,9 +79,9 @@ export function TopNav() {
             <Link href="/ideas">Idea Vault</Link>
           </Button>
           <Button asChild size="sm" className="hidden gap-1.5 sm:inline-flex">
-            <Link href="/workspaces/new">
+            <Link href="/onboarding">
               <Plus className="h-4 w-4" />
-              New workspace
+              New Dashboard
             </Link>
           </Button>
 
@@ -119,11 +119,11 @@ export function TopNav() {
               <div className="space-y-2 border-t border-border p-4">
                 <Button asChild className="w-full gap-1.5">
                   <Link
-                    href="/workspaces/new"
+                    href="/onboarding"
                     onClick={() => setMobileOpen(false)}
                   >
                     <Plus className="h-4 w-4" />
-                    New workspace
+                    New Dashboard
                   </Link>
                 </Button>
                 <Button asChild variant="outline" className="w-full gap-1.5">

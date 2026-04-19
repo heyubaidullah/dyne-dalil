@@ -51,8 +51,11 @@ type PdfAttachment = {
   data_base64: string;
 };
 
+type FeedbackType = "qualitative" | "quantitative";
+
 export function CaptureFlow({ workspaceId }: { workspaceId: string }) {
   const [step, setStep] = useState<Step>("ingest");
+  const [feedbackType, setFeedbackType] = useState<FeedbackType>("qualitative");
   const [title, setTitle] = useState("");
   const [sourceType, setSourceType] = useState<string>("");
   const [rawText, setRawText] = useState("");
@@ -112,6 +115,7 @@ export function CaptureFlow({ workspaceId }: { workspaceId: string }) {
         title: title.trim(),
         source_type: sourceType,
         raw_text: rawText,
+        feedback_type: feedbackType,
         pdf_attachment: pdfAttachment ?? undefined,
       });
       if (!res.ok) {
@@ -167,13 +171,15 @@ export function CaptureFlow({ workspaceId }: { workspaceId: string }) {
               signal_id: signalId,
               confirmed_summary: extraction.summary,
               founder_notes: founderNotes || undefined,
+              positive_feedback: extraction.positive_feedback,
+              negative_feedback: extraction.negative_feedback,
               pain_points: extraction.pain_points,
-              objections: extraction.objections,
               requests: extraction.requests,
               quotes: extraction.quotes,
               urgency: extraction.urgency,
               likely_segment: extraction.likely_segment,
               confidence: extraction.confidence,
+              category: extraction.category,
             }),
           },
         );
@@ -212,6 +218,8 @@ export function CaptureFlow({ workspaceId }: { workspaceId: string }) {
             onSourceChange={setSourceType}
             rawText={rawText}
             onRawChange={setRawText}
+            feedbackType={feedbackType}
+            onFeedbackTypeChange={setFeedbackType}
             pending={pending}
             normalizingFile={normalizingFile}
             pdfAttachment={pdfAttachment}
@@ -294,6 +302,8 @@ function IngestCard({
   onSourceChange,
   rawText,
   onRawChange,
+  feedbackType,
+  onFeedbackTypeChange,
   pending,
   normalizingFile,
   pdfAttachment,
@@ -306,6 +316,8 @@ function IngestCard({
   onSourceChange: (v: string) => void;
   rawText: string;
   onRawChange: (v: string) => void;
+  feedbackType: FeedbackType;
+  onFeedbackTypeChange: (v: FeedbackType) => void;
   pending: boolean;
   normalizingFile: boolean;
   pdfAttachment: PdfAttachment | null;
@@ -323,12 +335,45 @@ function IngestCard({
     await onFileDrop(file);
   }
 
+  const isQuant = feedbackType === "quantitative";
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="font-display text-lg">New signal</CardTitle>
+        <CardTitle className="font-display text-lg">Add new feedback</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div
+          role="tablist"
+          aria-label="Feedback type"
+          className="grid grid-cols-2 gap-1 rounded-lg bg-secondary/60 p-1"
+        >
+          {(["qualitative", "quantitative"] as const).map((t) => {
+            const active = feedbackType === t;
+            return (
+              <button
+                key={t}
+                role="tab"
+                type="button"
+                aria-selected={active}
+                onClick={() => onFeedbackTypeChange(t)}
+                className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                  active
+                    ? "bg-card text-ink-950 shadow-sm ring-1 ring-border dark:text-ink-50"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {t === "qualitative" ? "Qualitative" : "Quantitative"}
+                <span className="ml-1.5 text-xs text-muted-foreground">
+                  {t === "qualitative"
+                    ? "notes · calls · DMs"
+                    : "metrics · rates · counts"}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="title">
@@ -371,16 +416,23 @@ function IngestCard({
             }}
             onDragLeave={() => setDragActive(false)}
             onDrop={handleDrop}
-            placeholder="Paste text or drop txt/md/pdf/docx/json files here."
+            placeholder={
+              isQuant
+                ? "Describe the metric and what changed. E.g. 'Refund rate rose from 1.8% to 3.4% over 30 days, driven by jacket returns tagged zipper defect.'"
+                : "Paste the transcript, note, DM, or review. Drop a txt/md/pdf/docx file here to auto-load it."
+            }
             className={`font-mono text-sm ${
               dragActive ? "border-teal-500 ring-2 ring-teal-500/30" : ""
             }`}
           />
           <p className="text-xs text-muted-foreground">
-            {rawText.length} characters · extraction works best with 200+ characters of real customer language.
+            {rawText.length} characters ·{" "}
+            {isQuant
+              ? "include the metric name, the value (or trend), and what you think caused it."
+              : "extraction works best with 200+ characters of real customer language."}
           </p>
           <p className="text-xs text-muted-foreground">
-            Drop a file into the box and Dalil will auto-detect it. Docs max 10MB. PDFs are attached directly to Gemini.
+            Drop a file into the box and Dalil AI will auto-detect it. Docs max 10MB. PDFs are read directly by Dalil AI.
           </p>
           {pdfAttachment && (
             <p className="text-xs text-muted-foreground">
@@ -398,7 +450,7 @@ function IngestCard({
             className="gap-1.5"
           >
             <Sparkles className="h-4 w-4" />
-            Run AI extraction
+            Run Dalil AI
           </Button>
         </div>
       </CardContent>
@@ -411,13 +463,13 @@ function ExtractingCard() {
     <Card>
       <CardHeader>
         <CardTitle className="font-display text-lg">
-          Extracting with Gemini…
+          Dalil AI is reading your feedback…
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center gap-2 rounded-md bg-secondary/60 p-3 text-sm text-muted-foreground">
           <Sparkles className="h-4 w-4 animate-pulse text-teal-700" />
-          Reading the signal, pulling pains, objections, and quotes into structured form.
+          Pulling positive feedback, negative feedback, pain points, quotes, and a category into structure.
         </div>
         {[0, 1, 2, 3].map((i) => (
           <div key={i} className="space-y-2">
@@ -457,7 +509,7 @@ function ReviewCard({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between gap-2 font-display text-lg">
-          <span>AI understanding — review and confirm</span>
+          <span>Dalil AI understanding — review and confirm</span>
           {confirmed && (
             <Badge variant="default" className="gap-1">
               <CheckCircle2 className="h-3.5 w-3.5" />
@@ -477,7 +529,7 @@ function ReviewCard({
             disabled={confirmed}
           />
           <p className="text-xs text-muted-foreground">
-            This becomes the canonical memory. Edit anything the AI got wrong — your version wins.
+            This becomes the canonical memory. Edit anything Dalil AI got wrong — your version wins.
           </p>
         </div>
 
@@ -533,24 +585,30 @@ function ReviewCard({
         </div>
 
         <TagInput
+          label="Positive feedback"
+          values={extraction.positive_feedback}
+          onChange={(v) => patch("positive_feedback", v)}
+          placeholder="Add something they liked"
+          tone="success"
+        />
+        <TagInput
+          label="Negative feedback"
+          values={extraction.negative_feedback}
+          onChange={(v) => patch("negative_feedback", v)}
+          placeholder="Add something they disliked"
+          tone="warning"
+        />
+        <TagInput
           label="Pain points"
           values={extraction.pain_points}
           onChange={(v) => patch("pain_points", v)}
           placeholder="Add a pain point"
         />
         <TagInput
-          label="Objections"
-          values={extraction.objections}
-          onChange={(v) => patch("objections", v)}
-          placeholder="Add an objection"
-          tone="warning"
-        />
-        <TagInput
           label="Requests"
           values={extraction.requests}
           onChange={(v) => patch("requests", v)}
           placeholder="Add a request"
-          tone="success"
         />
         <TagInput
           label="Quotes"
@@ -600,16 +658,16 @@ function ReviewCard({
 function WhatHappensNext({ active = 0 }: { active?: number }) {
   const steps = [
     {
-      title: "AI extracts structure",
-      body: "Pain points, objections, requests, urgency, likely segment, quotes.",
+      title: "Dalil AI extracts structure",
+      body: "Positive feedback, negative feedback, pain points, requests, quotes, urgency, and a category for this input.",
     },
     {
       title: "You review and correct",
-      body: "Edit anything the AI got wrong. Your version is the source of truth.",
+      body: "Edit anything Dalil AI got wrong. Your version is the source of truth.",
     },
     {
       title: "Saved as canonical memory",
-      body: "Embeddings get generated so future similar issues can surface this one.",
+      body: "The input lands in the Memory Library, bucketed by its category.",
     },
     {
       title: "Recall surfaces past context",

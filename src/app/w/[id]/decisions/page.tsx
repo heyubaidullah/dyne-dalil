@@ -9,6 +9,7 @@ import { getWorkspace } from "@/lib/queries/workspaces";
 import { listDecisionsForWorkspace } from "@/lib/queries/decisions";
 import { OutcomeControl } from "@/components/decisions/outcome-control";
 import { formatDateLong } from "@/lib/format";
+import { StepFlowNav } from "@/components/layout/step-flow-nav";
 
 export const revalidate = 0;
 
@@ -31,15 +32,15 @@ export default async function DecisionLedgerPage(
 
   return (
     <PageStub
-      eyebrow={workspace.name}
+      eyebrow={`${workspace.name} · Decision Ledger`}
       title="Every decision, with its evidence."
-      description="Decisions linked to the signals that justified them. Mark the outcome when it lands — that's how the learning loop closes."
+      description="Decisions linked to the feedback that justified them. Mark the outcome when it lands — that's how the learning loop closes."
     >
       <div className="mb-4 flex items-center justify-end">
         <Button asChild className="gap-1.5">
           <Link href={`/w/${id}/decisions/new`}>
             <Plus className="h-4 w-4" />
-            Log a decision
+            Log a Decision
           </Link>
         </Button>
       </div>
@@ -101,7 +102,7 @@ export default async function DecisionLedgerPage(
                       </p>
                       {d.evidence.length === 0 ? (
                         <p className="text-xs text-muted-foreground">
-                          No linked signals.
+                          No linked feedback.
                         </p>
                       ) : (
                         <div className="space-y-1">
@@ -112,7 +113,7 @@ export default async function DecisionLedgerPage(
                             >
                               <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                               <span className="leading-snug">
-                                {e.signal_title ?? "Linked signal"}
+                                {e.signal_title ?? "Linked feedback"}
                               </span>
                             </div>
                           ))}
@@ -134,6 +135,8 @@ export default async function DecisionLedgerPage(
           })}
         </div>
       )}
+
+      <StepFlowNav workspaceId={id} current="decisions" />
     </PageStub>
   );
 }

@@ -14,6 +14,13 @@ export type Database = {
           description: string | null;
           owner: string | null;
           created_at: string;
+          audience_group: string | null;
+          product_category: string | null;
+          main_goal: string | null;
+          preferred_focus: string | null;
+          team_size: number | null;
+          company_notes: string | null;
+          onboarding_completed_at: string | null;
         };
         Insert: {
           id?: string;
@@ -21,6 +28,13 @@ export type Database = {
           description?: string | null;
           owner?: string | null;
           created_at?: string;
+          audience_group?: string | null;
+          product_category?: string | null;
+          main_goal?: string | null;
+          preferred_focus?: string | null;
+          team_size?: number | null;
+          company_notes?: string | null;
+          onboarding_completed_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["workspaces"]["Insert"]>;
         Relationships: [];
@@ -33,6 +47,8 @@ export type Database = {
           source_type: string | null;
           raw_text: string;
           created_at: string;
+          feedback_type: string | null;
+          category: string | null;
         };
         Insert: {
           id?: string;
@@ -41,6 +57,8 @@ export type Database = {
           source_type?: string | null;
           raw_text: string;
           created_at?: string;
+          feedback_type?: string | null;
+          category?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["signals"]["Insert"]>;
         Relationships: [];
@@ -52,6 +70,8 @@ export type Database = {
           ai_summary: string | null;
           founder_notes: string | null;
           confirmed_summary: string | null;
+          positive_feedback: string[] | null;
+          negative_feedback: string[] | null;
           pain_points: string[] | null;
           objections: string[] | null;
           requests: string[] | null;

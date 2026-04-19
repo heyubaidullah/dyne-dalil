@@ -12,6 +12,13 @@ export type WorkspaceRow = {
   name: string;
   description: string | null;
   created_at: string;
+  audience_group?: string | null;
+  product_category?: string | null;
+  main_goal?: string | null;
+  preferred_focus?: string | null;
+  team_size?: number | null;
+  company_notes?: string | null;
+  onboarding_completed_at?: string | null;
 };
 
 export type WorkspaceSummary = WorkspaceRow & {

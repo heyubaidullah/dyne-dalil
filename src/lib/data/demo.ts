@@ -593,7 +593,7 @@ export function demoTimeline(workspaceId: string): TimelineEntry[] {
       kind: "signal",
       id: s.id,
       date: s.created_at,
-      title: s.title ?? "Untitled signal",
+      title: s.title ?? "Untitled input",
       body: s.analysis?.confirmed_summary ?? "",
     });
   }
@@ -673,10 +673,11 @@ export function demoRecentActivity(limit = 6): RecentEntry[] {
         id: s.id,
         workspace_id: wsId,
         workspace_name: wsName,
-        title: s.title ?? "Untitled signal",
+        title: s.title ?? "Untitled input",
         body: s.analysis?.confirmed_summary ?? "",
         quote: s.analysis?.quotes?.[0] ?? null,
         segment: s.analysis?.likely_segment ?? null,
+        category: null,
         when: s.created_at,
       });
     }
@@ -693,6 +694,7 @@ export function demoRecentActivity(limit = 6): RecentEntry[] {
         body: d.rationale ?? "",
         quote: null,
         segment: d.category,
+        category: d.category ?? null,
         when: d.created_at,
       });
       if (d.outcome && d.outcome.status !== "pending") {
@@ -705,6 +707,7 @@ export function demoRecentActivity(limit = 6): RecentEntry[] {
           body: d.outcome.notes ?? "",
           quote: null,
           segment: wsName,
+          category: d.category ?? null,
           when: d.outcome.updated_at,
           outcome_status: d.outcome.status,
         });

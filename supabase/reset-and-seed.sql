@@ -1,6 +1,6 @@
 -- Dalil · FROM-SCRATCH reset + schema + seed (paste into Supabase SQL Editor)
 -- WARNING: drops the entire `public` schema and rebuilds it.
--- Order: 1) drop/recreate schema -> 2) migration -> 3) stage-zero add-on -> 4) seed.
+-- Order: 1) drop/recreate schema -> 2) init -> 3) stage-zero -> 4) feedback model -> 5) seed.
 
 drop schema if exists public cascade;
 create schema public;
@@ -218,6 +218,36 @@ update ideas
 set chat_transcript_summary = transcript_summary
 where chat_transcript_summary is null
   and transcript_summary is not null;
+
+-- Dalil · feedback model overhaul
+-- Adds:
+--   - signal_analyses.positive_feedback / negative_feedback (replace the UI
+--     surface for objections + likely_segment, while keeping the old columns
+--     so existing reads don't break mid-migration).
+--   - signals.feedback_type (qualitative | quantitative).
+--   - signals.category (AI-assigned, used for Dashboard category boxes).
+--   - workspaces.* onboarding fields (company profile captured at first run).
+
+alter table signal_analyses
+  add column if not exists positive_feedback text[],
+  add column if not exists negative_feedback text[];
+
+alter table signals
+  add column if not exists feedback_type text default 'qualitative',
+  add column if not exists category text;
+
+create index if not exists signals_category_idx
+  on signals(workspace_id, category)
+  where category is not null;
+
+alter table workspaces
+  add column if not exists audience_group text,
+  add column if not exists product_category text,
+  add column if not exists main_goal text,
+  add column if not exists preferred_focus text,
+  add column if not exists team_size integer,
+  add column if not exists company_notes text,
+  add column if not exists onboarding_completed_at timestamptz;
 
 -- Dalil · demo seed
 -- Five workspaces, each a well-known product's documented 0→1 GTM moment.
@@ -986,6 +1016,279 @@ insert into ideas (id, approved_idea, audience, problem_statement, converted_wor
    'First-time founders with no product idea yet',
    'Stage-zero founders don''t know what to build. A guided chat that outputs a narrow audience, specific pain, and a testable wedge is the missing primitive between "curious" and "committed".',
    null)
+on conflict (id) do nothing;
+
+-- ============================================================
+-- SUHBA · jacket feedback demo (the primary L1 walkthrough)
+-- Shows the Dashboard's category-box behavior: zipper / cloth quality /
+-- stitching inputs roll up into category flows with their own memory
+-- library and decision ledger.
+-- ============================================================
+
+insert into workspaces
+  (id, name, description, audience_group, product_category, main_goal,
+   preferred_focus, team_size, company_notes, onboarding_completed_at)
+values
+  ('5b4a2e18-6c9d-47f3-b0a8-d1f2e3c45067',
+   'SUHBA',
+   'Modest streetwear brand. First hero SKU: the SUHBA all-weather jacket. Collecting early-customer feedback to iterate the next drop.',
+   'Young Muslim consumers; Gen Z modest-fashion shoppers in the US and UK',
+   'Apparel / modest fashion',
+   'Improve customer feedback tracking and product decisions',
+   'Product quality and fit',
+   5,
+   'Founding team of five. Launched V1 jacket three months ago; V2 cut planned for next quarter.',
+   now() - interval '10 days')
+on conflict (id) do update
+  set name = excluded.name,
+      description = excluded.description,
+      audience_group = excluded.audience_group,
+      product_category = excluded.product_category,
+      main_goal = excluded.main_goal,
+      preferred_focus = excluded.preferred_focus,
+      team_size = excluded.team_size,
+      company_notes = excluded.company_notes,
+      onboarding_completed_at = excluded.onboarding_completed_at;
+
+insert into signals
+  (id, workspace_id, title, source_type, raw_text, feedback_type, category, created_at)
+values
+  -- Zipper issues (4)
+  ('5b4a0001-6c9d-47f3-b0a8-d1f2e3c45067',
+   '5b4a2e18-6c9d-47f3-b0a8-d1f2e3c45067',
+   'IG DM from Aisha — zipper jammed after two weeks',
+   'dm', 'Aisha (22, London): "Literally love this jacket but the zipper jammed on me after two weeks. Had to yank it, now it only goes halfway up. Is this a known thing?"',
+   'qualitative', 'Zipper issue', now() - interval '8 days'),
+  ('5b4a0002-6c9d-47f3-b0a8-d1f2e3c45067',
+   '5b4a2e18-6c9d-47f3-b0a8-d1f2e3c45067',
+   'Support email from Umar — broken puller',
+   'email', 'Order #1284. Customer says the zipper pull came off entirely at the gym. Requesting replacement. Third reported pull-failure this month.',
+   'qualitative', 'Zipper issue', now() - interval '6 days'),
+  ('5b4a0003-6c9d-47f3-b0a8-d1f2e3c45067',
+   '5b4a2e18-6c9d-47f3-b0a8-d1f2e3c45067',
+   'Post-order survey batch — zipper complaints (n=18)',
+   'notes', 'Post-purchase survey (n=120 respondents): 18 mentioned zipper issues without being prompted. Top complaints: sticking (11), puller separating (4), full failure (3).',
+   'qualitative', 'Zipper issue', now() - interval '5 days'),
+  ('5b4a0004-6c9d-47f3-b0a8-d1f2e3c45067',
+   '5b4a2e18-6c9d-47f3-b0a8-d1f2e3c45067',
+   'Return rate for zipper defects — 6.2%',
+   'notes', 'Zipper-coded returns over last 60 days: 37 / 595 orders = 6.2%. Category benchmark for outerwear returns in this price bracket: 2-3%.',
+   'quantitative', 'Zipper issue', now() - interval '3 days'),
+
+  -- Cloth quality (4)
+  ('5b4a0005-6c9d-47f3-b0a8-d1f2e3c45067',
+   '5b4a2e18-6c9d-47f3-b0a8-d1f2e3c45067',
+   'TikTok comment thread on review video',
+   'notes', 'Review video by @modestlyyasmin (47k followers): 86 comments. Recurring: "fabric feels thinner than the photos suggest" (14), "wish it was more structured" (9), "love the drape" (12). Mixed but leaning critical on weight.',
+   'qualitative', 'Cloth quality issue', now() - interval '9 days'),
+  ('5b4a0006-6c9d-47f3-b0a8-d1f2e3c45067',
+   '5b4a2e18-6c9d-47f3-b0a8-d1f2e3c45067',
+   'Call with wholesale buyer — fabric hand-feel',
+   'call', 'Nadia, boutique buyer in Dearborn, MI. Loves the silhouette. Flagged the hand-feel: "customers in my shop who pick it up assume it''s $65, not $140." Recommends switching to a Japanese twill she sources for a different label.',
+   'qualitative', 'Cloth quality issue', now() - interval '7 days'),
+  ('5b4a0007-6c9d-47f3-b0a8-d1f2e3c45067',
+   '5b4a2e18-6c9d-47f3-b0a8-d1f2e3c45067',
+   'Return reason breakdown (last 90 days)',
+   'notes', '"Material felt cheaper than expected" was the dominant free-text return reason: 22/58 non-size returns. Second place: color variance (9).',
+   'quantitative', 'Cloth quality issue', now() - interval '4 days'),
+  ('5b4a0008-6c9d-47f3-b0a8-d1f2e3c45067',
+   '5b4a2e18-6c9d-47f3-b0a8-d1f2e3c45067',
+   'NPS detractor interview — Hassan',
+   'interview', 'Hassan (28, Chicago) rated us 4/10. Positive: design, fit, brand. Negative: "the fabric pills after the second wash — it looks great out of the box but doesn''t age well." Would repurchase if material improved.',
+   'qualitative', 'Cloth quality issue', now() - interval '2 days'),
+
+  -- Stitching (3)
+  ('5b4a0009-6c9d-47f3-b0a8-d1f2e3c45067',
+   '5b4a2e18-6c9d-47f3-b0a8-d1f2e3c45067',
+   'Customer review — loose stitching at seam',
+   'notes', '5-star review for design, 2-star for construction: "Cuffs started unraveling on the right sleeve after three wears. Hand-stitched a fix myself. Worth it for the look but shouldn''t have to."',
+   'qualitative', 'Stitching issue', now() - interval '6 days'),
+  ('5b4a0010-6c9d-47f3-b0a8-d1f2e3c45067',
+   '5b4a2e18-6c9d-47f3-b0a8-d1f2e3c45067',
+   'Photo audit by QA lead — seam tension',
+   'notes', 'Internal QA pulled 20 units from the current batch and inspected seam tension under a loupe. 4 units had inconsistent stitch density around the pocket bag and cuff hem. Flagging the vendor.',
+   'qualitative', 'Stitching issue', now() - interval '4 days'),
+  ('5b4a0011-6c9d-47f3-b0a8-d1f2e3c45067',
+   '5b4a2e18-6c9d-47f3-b0a8-d1f2e3c45067',
+   'Stitching-related returns — 2.1%',
+   'notes', 'Returns coded as stitching/construction defect: 13 / 620 orders over 90 days = 2.1%. Below zipper but trending up month over month.',
+   'quantitative', 'Stitching issue', now() - interval '1 days')
+on conflict (id) do nothing;
+
+insert into signal_analyses
+  (signal_id, ai_summary, confirmed_summary, positive_feedback, negative_feedback, pain_points,
+   requests, urgency, likely_segment, quotes, confidence, confirmed_at)
+values
+  ('5b4a0001-6c9d-47f3-b0a8-d1f2e3c45067',
+   'Customer loves product but zipper jammed in two weeks.',
+   'Customer in London loved the jacket but the zipper jammed after two weeks and now only opens halfway. Product affection is high; durability concern is specific to the zipper assembly.',
+   array['Loves the overall product','Willing to reach out (high engagement)'],
+   array['Zipper jammed after two weeks','Zipper now only opens halfway'],
+   array['Zipper durability','Hardware failure on a hero SKU'],
+   array['Replacement or repair','Confirmation that this is known and being fixed'],
+   'high', 'Young Muslim consumer, UK, early adopter',
+   array['Literally love this jacket but the zipper jammed on me after two weeks.'],
+   'high', now() - interval '8 days'),
+  ('5b4a0002-6c9d-47f3-b0a8-d1f2e3c45067',
+   'Third pull-failure in the same month.',
+   'Support email reports the zipper pull came off entirely — third reported pull-failure this month. Individually recoverable; as a pattern, material supplier issue.',
+   array[]::text[],
+   array['Zipper pull separating from slider','Third pull-failure this month'],
+   array['Zipper hardware quality','Vendor reliability'],
+   array['Replacement jacket','Process improvement signal for QA'],
+   'high', 'Active customer with order history',
+   array['The zipper pull came off entirely at the gym.'],
+   'high', now() - interval '6 days'),
+  ('5b4a0003-6c9d-47f3-b0a8-d1f2e3c45067',
+   '18 of 120 surveyed mentioned zipper issues unprompted.',
+   'Post-purchase survey: 18/120 unprompted zipper complaints (15%). Sticking dominates (11), then puller separation (4), full failure (3). Zipper is the single largest product complaint theme.',
+   array['High brand loyalty — survey response rate was strong'],
+   array['Sticking','Puller separation','Full zipper failure'],
+   array['Zipper is the largest quality theme','Cross-customer pattern, not one-off'],
+   array['Fix the zipper hardware or supplier for the V2 cut'],
+   'high', 'Post-purchase customer cohort',
+   array['18 of 120 mentioned zipper issues without being prompted.'],
+   'high', now() - interval '5 days'),
+  ('5b4a0004-6c9d-47f3-b0a8-d1f2e3c45067',
+   'Zipper-coded return rate 6.2% — 2-3x category benchmark.',
+   'Zipper-defect returns are 6.2% of orders over 60 days, 2-3x the 2-3% category benchmark for outerwear in this price range. Hard quantitative signal for the V2 cut.',
+   array[]::text[],
+   array['6.2% defect rate on zipper alone','2-3x category benchmark'],
+   array['Return-driven margin erosion','Reputational risk compounding'],
+   array['Source a premium YKK or comparable zipper for V2'],
+   'high', 'Operations / returns',
+   array['Zipper-coded returns over 60 days: 37 / 595 orders = 6.2%.'],
+   'high', now() - interval '3 days'),
+
+  ('5b4a0005-6c9d-47f3-b0a8-d1f2e3c45067',
+   'Review video comments lean critical on fabric weight, positive on drape.',
+   'TikTok review video (47k follower creator) — 86 comments. Fabric weight criticized (14), structure wanted (9), drape praised (12). Public-facing perception on cloth is mixed and the weight complaint compounds the cloth-quality theme.',
+   array['Drape and silhouette praised','Brand aesthetic resonates'],
+   array['Fabric feels thinner than product photography suggests','Wish the jacket was more structured'],
+   array['Public perception of cloth weight','Photography-vs-reality expectation gap'],
+   array['Heavier weight in V2 (or reshoot product photography honestly)'],
+   'medium', 'Gen Z modest fashion audience on TikTok',
+   array['Fabric feels thinner than the photos suggest.'],
+   'high', now() - interval '9 days'),
+  ('5b4a0006-6c9d-47f3-b0a8-d1f2e3c45067',
+   'Wholesale buyer flags the cloth hand-feel vs price.',
+   'Dearborn boutique buyer: customers assume it''s a $65 product when they touch it, vs the $140 retail. Recommends a specific Japanese twill used on another label she stocks. Strong channel signal.',
+   array['Silhouette praised','Strong wholesale relationship intact'],
+   array['Hand-feel reads $65, not $140','Touch-test kills the price-to-quality ratio'],
+   array['Perceived-value gap at retail','Wholesale channel credibility risk'],
+   array['Swap to a heavier / more premium twill (she named a Japanese source)'],
+   'high', 'Wholesale boutique channel',
+   array['Customers who pick it up assume it''s $65, not $140.'],
+   'high', now() - interval '7 days'),
+  ('5b4a0007-6c9d-47f3-b0a8-d1f2e3c45067',
+   '"Material felt cheaper than expected" leads non-size returns.',
+   '"Material felt cheaper than expected" was 22/58 non-size return reasons over 90 days — the dominant category. Confirms the cloth-quality theme at the returns layer.',
+   array[]::text[],
+   array['Cheap-feel perception is the #1 non-size return reason','~38% of non-size returns'],
+   array['Non-size return cost','Customer-trust erosion'],
+   array['Upgrade cloth on V2 before the next drop'],
+   'high', 'Returns cohort',
+   array['"Material felt cheaper than expected" was the dominant free-text return reason.'],
+   'high', now() - interval '4 days'),
+  ('5b4a0008-6c9d-47f3-b0a8-d1f2e3c45067',
+   'NPS detractor: fabric pills after second wash.',
+   'Hassan (NPS 4/10) loves everything except fabric longevity — pills after the second wash. Would repurchase if the material improved. Specific, actionable defector.',
+   array['Design praised','Fit praised','Brand resonance (would repurchase on upgrade)'],
+   array['Fabric pills after the second wash','Short wearable lifespan'],
+   array['Cloth durability','Lifecycle vs. price expectation'],
+   array['Longer-wear fabric','Care instructions or honest marketing'],
+   'medium', 'NPS detractor, older Gen Z',
+   array['The fabric pills after the second wash.'],
+   'medium', now() - interval '2 days'),
+
+  ('5b4a0009-6c9d-47f3-b0a8-d1f2e3c45067',
+   'Customer self-repaired cuff stitching after three wears.',
+   'Cuff stitching unraveled after three wears. Customer did a hand-stitched fix and still left a mixed 5/2 review — strong loyalty signal, weak construction signal.',
+   array['Design loved enough to keep and repair','5-star review on design despite the defect'],
+   array['Cuff stitching unraveled after three wears'],
+   array['Construction inconsistency','Customer labor used to hide the defect'],
+   array['Tighter cuff-seam spec for V2'],
+   'medium', 'Loyal customer with low tolerance for hidden defects',
+   array['Cuffs started unraveling on the right sleeve after three wears.'],
+   'high', now() - interval '6 days'),
+  ('5b4a0010-6c9d-47f3-b0a8-d1f2e3c45067',
+   'Internal QA: 4/20 units have inconsistent stitch density.',
+   'QA loupe inspection found 4/20 units with inconsistent stitch density around the pocket bag and cuff. Vendor-quality signal, not design signal.',
+   array[]::text[],
+   array['Inconsistent stitch density at pocket bag and cuff'],
+   array['Vendor quality control','Batch-to-batch variance'],
+   array['Tighten vendor QC spec','Consider secondary vendor for pocket construction'],
+   'high', 'Internal QA',
+   array['4 units had inconsistent stitch density around the pocket bag and cuff hem.'],
+   'high', now() - interval '4 days'),
+  ('5b4a0011-6c9d-47f3-b0a8-d1f2e3c45067',
+   'Stitching returns at 2.1%, trending up.',
+   '2.1% of orders returned for stitching/construction over 90 days. Below zipper but month-over-month trend is upward — early warning.',
+   array[]::text[],
+   array['Upward trend month over month','2.1% of orders'],
+   array['Compounding quality perception risk'],
+   array['Address vendor-side construction before V2 cut'],
+   'medium', 'Operations / returns',
+   array['13 / 620 orders over 90 days = 2.1%.'],
+   'high', now() - interval '1 days')
+on conflict (signal_id) do nothing;
+
+insert into decisions
+  (id, workspace_id, title, category, rationale, expected_outcome, created_at)
+values
+  ('5b4a0d01-6c9d-47f3-b0a8-d1f2e3c45067',
+   '5b4a2e18-6c9d-47f3-b0a8-d1f2e3c45067',
+   'Switch to YKK zippers on the V2 cut',
+   'Zipper issue',
+   '6.2% zipper-defect return rate (2-3x category benchmark), 18/120 unprompted survey complaints, three pull-failures in a single month. YKK is the industry default and the supplier premium is small relative to the return-driven margin loss.',
+   'Zipper-defect returns drop to <1.5% within 90 days of V2 launch.',
+   now() - interval '2 days'),
+  ('5b4a0d02-6c9d-47f3-b0a8-d1f2e3c45067',
+   '5b4a2e18-6c9d-47f3-b0a8-d1f2e3c45067',
+   'Upgrade to a heavier Japanese twill for V2',
+   'Cloth quality issue',
+   'Wholesale buyer named a specific source that solves the hand-feel gap. "Material felt cheaper" is the #1 non-size return reason. Hassan''s NPS comment isolates the pill-after-wash issue. Cloth is where the perceived-value gap lives.',
+   'Non-size returns from cloth complaints drop below 10%. Post-order survey fabric sentiment flips positive.',
+   now() - interval '3 days'),
+  ('5b4a0d03-6c9d-47f3-b0a8-d1f2e3c45067',
+   '5b4a2e18-6c9d-47f3-b0a8-d1f2e3c45067',
+   'Tighten vendor QC spec on cuff + pocket seams',
+   'Stitching issue',
+   'QA loupe audit found 4/20 units with inconsistent stitch density. Stitching returns at 2.1% are trending up. Tighter spec and sign-off before shipping should cut this without a full vendor switch.',
+   'Stitching returns back under 1% within 60 days.',
+   now() - interval '1 days')
+on conflict (id) do nothing;
+
+insert into decision_evidence (decision_id, signal_id, snippet) values
+  ('5b4a0d01-6c9d-47f3-b0a8-d1f2e3c45067','5b4a0001-6c9d-47f3-b0a8-d1f2e3c45067','Literally love this jacket but the zipper jammed on me after two weeks.'),
+  ('5b4a0d01-6c9d-47f3-b0a8-d1f2e3c45067','5b4a0002-6c9d-47f3-b0a8-d1f2e3c45067','Third pull-failure this month.'),
+  ('5b4a0d01-6c9d-47f3-b0a8-d1f2e3c45067','5b4a0003-6c9d-47f3-b0a8-d1f2e3c45067','18 of 120 mentioned zipper issues without being prompted.'),
+  ('5b4a0d01-6c9d-47f3-b0a8-d1f2e3c45067','5b4a0004-6c9d-47f3-b0a8-d1f2e3c45067','6.2% defect rate on zipper alone — 2-3x category benchmark.'),
+  ('5b4a0d02-6c9d-47f3-b0a8-d1f2e3c45067','5b4a0005-6c9d-47f3-b0a8-d1f2e3c45067','Fabric feels thinner than the photos suggest.'),
+  ('5b4a0d02-6c9d-47f3-b0a8-d1f2e3c45067','5b4a0006-6c9d-47f3-b0a8-d1f2e3c45067','Customers who pick it up assume it''s $65, not $140.'),
+  ('5b4a0d02-6c9d-47f3-b0a8-d1f2e3c45067','5b4a0007-6c9d-47f3-b0a8-d1f2e3c45067','"Material felt cheaper than expected" was the dominant return reason.'),
+  ('5b4a0d02-6c9d-47f3-b0a8-d1f2e3c45067','5b4a0008-6c9d-47f3-b0a8-d1f2e3c45067','The fabric pills after the second wash.'),
+  ('5b4a0d03-6c9d-47f3-b0a8-d1f2e3c45067','5b4a0009-6c9d-47f3-b0a8-d1f2e3c45067','Cuffs started unraveling on the right sleeve after three wears.'),
+  ('5b4a0d03-6c9d-47f3-b0a8-d1f2e3c45067','5b4a0010-6c9d-47f3-b0a8-d1f2e3c45067','4 units had inconsistent stitch density around the pocket bag and cuff hem.'),
+  ('5b4a0d03-6c9d-47f3-b0a8-d1f2e3c45067','5b4a0011-6c9d-47f3-b0a8-d1f2e3c45067','Stitching-coded returns trending up month over month.')
+on conflict (decision_id, signal_id) do nothing;
+
+insert into outcomes (id, decision_id, status, notes, updated_at) values
+  ('5b4a0a01-6c9d-47f3-b0a8-d1f2e3c45067',
+   '5b4a0d01-6c9d-47f3-b0a8-d1f2e3c45067',
+   'pending',
+   'YKK sourced, sample hardware in hand, awaiting first V2 production run. Measuring 90-day defect rate post-launch.',
+   now() - interval '1 days'),
+  ('5b4a0a02-6c9d-47f3-b0a8-d1f2e3c45067',
+   '5b4a0d02-6c9d-47f3-b0a8-d1f2e3c45067',
+   'pending',
+   'Japanese twill fabric swatches received. Cost per yard +22% — modeling against return-driven margin recapture.',
+   now() - interval '2 days'),
+  ('5b4a0a03-6c9d-47f3-b0a8-d1f2e3c45067',
+   '5b4a0d03-6c9d-47f3-b0a8-d1f2e3c45067',
+   'improved',
+   'Vendor signed new QC spec. First post-spec batch: 0/25 cuff defects on loupe inspection. Returns data to follow in 30 days.',
+   now() - interval '0 days')
 on conflict (id) do nothing;
 
 commit;

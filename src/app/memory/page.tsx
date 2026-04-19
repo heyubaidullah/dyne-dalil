@@ -30,7 +30,7 @@ export default async function GlobalMemoryPage() {
               <Inbox className="h-5 w-5 text-teal-700" />
             </span>
             <p className="max-w-sm text-sm text-muted-foreground">
-              No confirmed memories yet. Capture a signal in any workspace and
+              No confirmed memories yet. Add feedback in any Dashboard and
               confirm the AI extraction to see it surface here.
             </p>
             <Button asChild>

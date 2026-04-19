@@ -3,9 +3,11 @@ import { AIWrapperError, generateStructuredOutput } from "@/lib/ai/wrapper";
 
 const extractionSchema = z.object({
   summary: z.string(),
+  positiveFeedback: z.array(z.string()),
+  negativeFeedback: z.array(z.string()),
   painPoints: z.array(z.string()),
-  objections: z.array(z.string()),
   requests: z.array(z.string()),
+  category: z.string(),
   urgency: z.enum(["low", "medium", "high"]),
   likelySegment: z.string(),
   quotes: z.array(z.string()),
@@ -18,7 +20,14 @@ const requestSchema = z.object({
   transcript: z.string().min(1),
 });
 
-const SYSTEM_PROMPT = `You are an expert product manager analyzing raw customer conversation transcripts.\nExtract the core data points strictly following the requested JSON schema.`;
+const SYSTEM_PROMPT = `You are Dalil AI's extraction engine. Turn raw customer feedback into structured, founder-readable evidence.
+
+Rules:
+- positiveFeedback: things the customer liked or praised (empty array if none).
+- negativeFeedback: things the customer disliked or complained about (empty array if none).
+- painPoints: the underlying problems behind the negative feedback or feature requests. Specific over abstract.
+- category: a short reusable noun phrase that groups this feedback with similar future feedback (e.g. "Zipper issue", "Onboarding friction"). Under 4 words.
+- Keep the customer's voice in quotes.`;
 
 export async function POST(request: Request) {
   const parsed = requestSchema.safeParse(await request.json());

@@ -64,14 +64,14 @@ export default async function HomePage() {
               variant="outline"
               className="bg-card/60 backdrop-blur"
             >
-              <Link href="/workspaces/new">Create workspace</Link>
+              <Link href="/onboarding">Create Dashboard</Link>
             </Button>
             <Button
               asChild
               variant="outline"
               className="bg-card/60 backdrop-blur"
             >
-              <Link href="/workspaces">Upload signal</Link>
+              <Link href="/workspaces">Add feedback</Link>
             </Button>
             <Button
               asChild
@@ -166,8 +166,8 @@ export default async function HomePage() {
               <Card className="md:col-span-2 border-dashed">
                 <CardContent className="py-10 text-center">
                   <p className="text-sm text-muted-foreground">
-                    No activity yet. Create a workspace and capture your first
-                    signal to see recent memory here.
+                    No activity yet. Create a Dashboard and add your first
+                    piece of feedback to see recent memory here.
                   </p>
                 </CardContent>
               </Card>

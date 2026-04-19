@@ -21,18 +21,18 @@ export default async function WorkspacesPage() {
     <>
       {!status.ready && <SchemaBanner message={status.error} />}
       <PageStub
-      eyebrow="Workspaces"
-      title="Every founder memory, scoped."
-      description="A workspace is one product, one market, one set of customers. Pick one to dive in, or start a new one from scratch."
+      eyebrow="Dashboards"
+      title="Every company memory, scoped."
+      description="A Dashboard is one product, one market, one set of customers. Pick one to dive in, or create a new one from scratch."
     >
       <div className="mb-6 flex items-center justify-end gap-2">
         <Button asChild variant="outline">
           <Link href="/ideas">Convert from Idea Vault</Link>
         </Button>
         <Button asChild>
-          <Link href="/workspaces/new">
+          <Link href="/onboarding">
             <Plus className="mr-1 h-4 w-4" />
-            New workspace
+            New Dashboard
           </Link>
         </Button>
       </div>
@@ -64,7 +64,7 @@ export default async function WorkspacesPage() {
                   )}
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="secondary">
-                      {w.signal_count} signal{w.signal_count === 1 ? "" : "s"}
+                      {w.signal_count} input{w.signal_count === 1 ? "" : "s"}
                     </Badge>
                     <Badge variant="secondary">
                       {w.decision_count} decision
@@ -96,18 +96,18 @@ function EmptyState() {
         </span>
         <div className="space-y-1">
           <h3 className="font-display text-lg font-semibold">
-            No workspaces yet.
+            No Dashboards yet.
           </h3>
           <p className="max-w-sm text-sm text-muted-foreground">
-            Create your first workspace, then capture a signal from a call,
-            note, or transcript.
+            Walk the short onboarding to create your first Dashboard, then
+            add feedback from a call, note, DM, or review.
           </p>
         </div>
         <div className="flex flex-wrap justify-center gap-2">
           <Button asChild>
-            <Link href="/workspaces/new">
+            <Link href="/onboarding">
               <Plus className="mr-1 h-4 w-4" />
-              New workspace
+              Start onboarding
             </Link>
           </Button>
           <Button asChild variant="outline">

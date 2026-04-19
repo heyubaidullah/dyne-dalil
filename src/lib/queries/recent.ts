@@ -12,6 +12,7 @@ export type RecentEntry = {
   body: string;
   quote: string | null;
   segment: string | null;
+  category: string | null;
   when: string;
   outcome_status?: "improved" | "failed" | "inconclusive" | "pending";
 };
@@ -47,7 +48,7 @@ async function fetchRecent(
     sb
       .from("signals")
       .select(
-        `id, workspace_id, title, created_at,
+        `id, workspace_id, title, category, created_at,
          workspaces(name),
          signal_analyses(confirmed_summary, ai_summary, likely_segment, quotes)`,
       )
@@ -65,7 +66,7 @@ async function fetchRecent(
       .from("outcomes")
       .select(
         `id, decision_id, status, notes, updated_at,
-         decisions(workspace_id, title, workspaces(name))`,
+         decisions(workspace_id, title, category, workspaces(name))`,
       )
       .order("updated_at", { ascending: false })
       .limit(sampleLimit),
@@ -92,11 +93,12 @@ async function fetchRecent(
       id: s.id,
       workspace_id: s.workspace_id,
       workspace_name: wsName,
-      title: s.title ?? "Untitled signal",
+      title: s.title ?? "Untitled input",
       body: summary,
       quote: (a as { quotes?: string[] | null })?.quotes?.[0] ?? null,
       segment:
         (a as { likely_segment?: string | null })?.likely_segment ?? null,
+      category: (s as { category?: string | null }).category ?? null,
       when: s.created_at,
     });
   }
@@ -114,6 +116,7 @@ async function fetchRecent(
       body: d.rationale ?? d.category ?? "Decision logged.",
       quote: null,
       segment: d.category,
+      category: d.category ?? null,
       when: d.created_at,
     });
   }
@@ -124,6 +127,7 @@ async function fetchRecent(
         decisions?: {
           workspace_id?: string;
           title?: string | null;
+          category?: string | null;
           workspaces?: { name?: string | null } | null;
         } | null;
       }
@@ -138,6 +142,7 @@ async function fetchRecent(
       body: o.notes ?? "Outcome logged.",
       quote: null,
       segment: decRef.workspaces?.name ?? null,
+      category: decRef.category ?? null,
       when: o.updated_at,
       outcome_status: o.status,
     });
