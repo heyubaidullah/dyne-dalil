@@ -10,15 +10,13 @@ import {
   LineChart,
   Sparkles,
   Telescope,
-  Clock,
   ArrowRight,
-  Quote,
   PlusCircle,
   MessageSquarePlus,
   Vault,
 } from "lucide-react";
 import { globalStats } from "@/lib/queries/workspaces";
-import { listRecentActivity } from "@/lib/queries/recent";
+import { listRecentActivity, type RecentEntry } from "@/lib/queries/recent";
 import { formatDistanceToNow } from "@/lib/format";
 import { LogoMark } from "@/components/layout/logo";
 
@@ -32,7 +30,7 @@ export default async function HomePage() {
       outcomes: 0,
       similar_recalls: 0,
     })),
-    listRecentActivity(4).catch(() => []),
+    listRecentActivity(8).catch(() => []),
   ]);
   return (
     <>
@@ -158,50 +156,71 @@ export default async function HomePage() {
       </section>
 
       <section className="border-t border-border bg-secondary/40">
-        <div className="mx-auto grid w-full max-w-6xl gap-8 px-6 py-16 lg:grid-cols-5">
-          <div className="lg:col-span-2">
-            <p className="mb-2 text-sm font-medium text-teal-700">Recent memory</p>
-            <h3 className="font-display text-2xl font-semibold tracking-tight text-ink-950 dark:text-ink-50">
-              What the market said this week.
-            </h3>
-            <p className="mt-3 text-sm text-muted-foreground">
-              Snapshot of confirmed memories and decisions from your active
-              workspaces. Click through to any card for the full evidence trail.
-            </p>
-            <Button asChild variant="outline" className="mt-6">
-              <Link href="/workspaces">
-                Open a workspace
-                <ArrowRight className="ml-1 h-4 w-4" />
-              </Link>
-            </Button>
+        <div className="mx-auto w-full max-w-6xl px-6 py-16">
+          <div className="mb-8 flex items-end justify-between gap-4">
+            <div>
+              <p className="mb-1 text-sm font-medium text-teal-700">
+                Recent memory
+              </p>
+              <h3 className="font-display text-2xl font-semibold tracking-tight text-ink-950 dark:text-ink-50 sm:text-3xl">
+                Recent Memories
+              </h3>
+            </div>
+            <Link
+              href="/memory"
+              className="inline-flex items-center gap-1 text-sm font-medium text-teal-700 transition-colors hover:text-teal-600 dark:text-teal-400"
+            >
+              View All
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
-          <div className="grid gap-4 lg:col-span-3 md:grid-cols-2">
-            {recent.length === 0 ? (
-              <Card className="md:col-span-2 border-dashed">
-                <CardContent className="py-10 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    No activity yet. Create a Dashboard and add your first
-                    piece of feedback to see recent memory here.
-                  </p>
-                </CardContent>
-              </Card>
-            ) : (
-              recent.map((r) => (
-                <Link
-                  key={`${r.kind}-${r.id}`}
-                  href={`/w/${r.workspace_id}/${r.kind === "signal" ? "memory" : r.kind === "decision" ? "decisions" : "timeline"}`}
-                >
-                  <MemoryCard
-                    kind={r.kind}
-                    title={r.title}
-                    segment={r.workspace_name ?? r.segment ?? "workspace"}
-                    when={formatDistanceToNow(r.when)}
-                    quote={r.quote ?? r.body}
-                  />
-                </Link>
-              ))
-            )}
-          </div>
+
+          {recent.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="py-10 text-center">
+                <p className="text-sm text-muted-foreground">
+                  No activity yet. Create a Dashboard and add your first piece
+                  of feedback to see recent memory here.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-6">
+              {(() => {
+                // Prefer a decision for the featured "AI Insight" card;
+                // otherwise fall back to whatever is 4th. The remaining
+                // three slots fill the top row + bottom-left.
+                const featured =
+                  recent.find((r) => r.kind === "decision") ?? recent[3] ?? recent[0];
+                const regulars = recent
+                  .filter((r) => !(r.kind === featured.kind && r.id === featured.id))
+                  .slice(0, 3);
+
+                // Bento spans: row 1 = 3/3, row 2 = 2/4 (featured on right).
+                const spans = [
+                  "sm:col-span-3",
+                  "sm:col-span-3",
+                  "sm:col-span-2",
+                ];
+
+                return (
+                  <>
+                    {regulars.map((r, i) => (
+                      <div
+                        key={`${r.kind}-${r.id}`}
+                        className={spans[i] ?? "sm:col-span-3"}
+                      >
+                        <MemoryCard entry={r} />
+                      </div>
+                    ))}
+                    <div className="sm:col-span-4">
+                      <AiInsightCard entry={featured} />
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          )}
         </div>
       </section>
 
@@ -275,50 +294,161 @@ function PillarCard({
   );
 }
 
-type MemoryKind = "signal" | "decision" | "outcome";
-
-const KIND_STYLES: Record<
-  MemoryKind,
-  { badge: "default" | "secondary" | "outline"; label: string }
-> = {
-  signal: { badge: "outline", label: "Signal" },
-  decision: { badge: "default", label: "Decision" },
-  outcome: { badge: "secondary", label: "Outcome" },
+type KindPill = {
+  label: string;
+  className: string;
 };
 
-function MemoryCard({
-  kind,
-  title,
-  segment,
-  when,
-  quote,
-}: {
-  kind: MemoryKind;
-  title: string;
-  segment: string;
-  when: string;
-  quote: string;
-}) {
-  const style = KIND_STYLES[kind];
+function pillsFor(entry: RecentEntry): KindPill[] {
+  const pills: KindPill[] = [];
+  if (entry.kind === "decision") {
+    pills.push({
+      label: "Decision",
+      className:
+        "bg-rose-100 text-rose-700 ring-1 ring-rose-200/70 dark:bg-rose-950/50 dark:text-rose-200 dark:ring-rose-900/60",
+    });
+  } else if (entry.kind === "outcome") {
+    const status = entry.outcome_status ?? "pending";
+    if (status === "improved") {
+      pills.push({
+        label: "Outcome · improved",
+        className:
+          "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200/70 dark:bg-emerald-950/50 dark:text-emerald-200 dark:ring-emerald-900/60",
+      });
+    } else if (status === "failed") {
+      pills.push({
+        label: "Outcome · failed",
+        className:
+          "bg-red-100 text-red-700 ring-1 ring-red-200/70 dark:bg-red-950/50 dark:text-red-200 dark:ring-red-900/60",
+      });
+    } else {
+      pills.push({
+        label: "Outcome",
+        className:
+          "bg-amber-100 text-amber-800 ring-1 ring-amber-200/70 dark:bg-amber-950/50 dark:text-amber-200 dark:ring-amber-900/60",
+      });
+    }
+  } else {
+    pills.push({
+      label: "Feedback",
+      className:
+        "bg-teal-100 text-teal-800 ring-1 ring-teal-200/70 dark:bg-teal-950/60 dark:text-teal-200 dark:ring-teal-900/60",
+    });
+  }
+
+  if (entry.category) {
+    pills.push({
+      label: entry.category,
+      className:
+        "bg-ink-100 text-ink-800 ring-1 ring-ink-200/70 dark:bg-ink-800 dark:text-ink-100 dark:ring-ink-700",
+    });
+  }
+
+  return pills.slice(0, 2);
+}
+
+function hrefFor(entry: RecentEntry): string {
+  if (entry.kind === "signal") return `/w/${entry.workspace_id}/memory`;
+  if (entry.kind === "decision") return `/w/${entry.workspace_id}/decisions`;
+  return `/w/${entry.workspace_id}/timeline`;
+}
+
+function MemoryCard({ entry }: { entry: RecentEntry }) {
+  const pills = pillsFor(entry);
+  const body = entry.quote ?? entry.body;
   return (
-    <Card className="h-full">
-      <CardContent className="flex h-full flex-col gap-3 pt-6">
-        <div className="flex items-center justify-between gap-2">
-          <Badge variant={style.badge}>{style.label}</Badge>
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Clock className="h-3 w-3" />
-            {when}
+    <Link href={hrefFor(entry)} className="group block h-full">
+      <Card className="dalil-lift flex h-full min-h-[190px] flex-col">
+        <CardContent className="flex h-full flex-col gap-3 pt-5">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {pills.map((p) => (
+                <span
+                  key={p.label}
+                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium ${p.className}`}
+                >
+                  {p.label}
+                </span>
+              ))}
+            </div>
+            <span className="shrink-0 text-xs text-muted-foreground">
+              {formatDistanceToNow(entry.when)}
+            </span>
+          </div>
+
+          <h4 className="font-display text-base font-semibold leading-snug text-ink-950 line-clamp-2 dark:text-ink-50">
+            {entry.title}
+          </h4>
+
+          {body && (
+            <p className="text-sm text-ink-700 line-clamp-3 dark:text-ink-200">
+              {body}
+            </p>
+          )}
+
+          <div className="mt-auto flex items-center gap-2 pt-2 text-xs text-muted-foreground">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-700 text-[10px] font-semibold text-white dark:bg-teal-600">
+              {initialsFromWorkspace(entry.workspace_name)}
+            </span>
+            <span className="truncate">
+              From{" "}
+              <span className="font-medium text-ink-700 dark:text-ink-200">
+                {entry.workspace_name ?? "a Dashboard"}
+              </span>
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
+
+function AiInsightCard({ entry }: { entry: RecentEntry }) {
+  return (
+    <Link href={hrefFor(entry)} className="group block h-full">
+      <div className="dalil-lift relative flex h-full min-h-[190px] flex-col justify-center gap-4 overflow-hidden rounded-xl bg-teal-900 p-6 text-teal-50 ring-1 ring-teal-800 dark:bg-teal-950 dark:ring-teal-900">
+        <span
+          className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-teal-700/30 blur-3xl"
+          aria-hidden
+        />
+        <span
+          className="pointer-events-none absolute right-8 top-6 text-teal-300/30"
+          aria-hidden
+        >
+          <Sparkles className="h-8 w-8" />
+        </span>
+
+        <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0 flex-1">
+            <span className="mb-3 inline-flex items-center gap-1 rounded-full bg-teal-800/60 px-2.5 py-0.5 text-[11px] font-medium text-teal-100 ring-1 ring-teal-700">
+              <Sparkles className="h-3 w-3" />
+              AI Insight
+            </span>
+            <h4 className="font-display text-lg font-semibold leading-snug text-white line-clamp-2">
+              {entry.title}
+            </h4>
+            {entry.body && (
+              <p className="mt-2 max-w-xl text-sm text-teal-100/85 line-clamp-2">
+                {entry.body}
+              </p>
+            )}
+          </div>
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-medium text-teal-900 shadow-sm transition-transform group-hover:translate-x-0.5">
+            Review Synthesis
+            <ArrowRight className="h-3.5 w-3.5" />
           </span>
         </div>
-        <h4 className="font-display text-base font-semibold leading-snug text-ink-950 dark:text-ink-50">
-          {title}
-        </h4>
-        <p className="text-xs text-muted-foreground">{segment}</p>
-        <div className="mt-auto flex gap-2 border-l-2 border-teal-500 pl-3 text-sm italic text-ink-700 dark:text-ink-200">
-          <Quote className="mt-0.5 h-3.5 w-3.5 shrink-0 text-teal-500" />
-          <span>{quote}</span>
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+    </Link>
   );
+}
+
+function initialsFromWorkspace(name: string | null): string {
+  if (!name) return "D";
+  const parts = name
+    .replace(/[·—–\-]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return name.slice(0, 2).toUpperCase();
 }

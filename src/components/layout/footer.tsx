@@ -13,7 +13,7 @@ const MENU_LINKS = [
 export function Footer() {
   const year = new Date().getFullYear();
   return (
-    <footer className="mt-auto border-t border-border bg-card/40">
+    <footer className="mt-auto border-t border-border bg-ink-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] dark:bg-ink-900 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
         <div className="grid gap-8 lg:grid-cols-3">
           <div className="space-y-3">
