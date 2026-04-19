@@ -6,6 +6,7 @@ const MENU_LINKS = [
   { href: "/memory", label: "Memory Library" },
   { href: "/timeline", label: "Timeline" },
   { href: "/integrations", label: "Integrations" },
+  { href: "/pricing", label: "Pricing" },
   { href: "/ideas", label: "Idea Vault" },
   { href: "/settings", label: "Settings" },
 ];

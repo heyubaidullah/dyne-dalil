@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CreditCard } from "lucide-react";
+import { CreditCard, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
@@ -12,7 +12,19 @@ type CheckoutResponse = {
   message?: string;
 };
 
-export function CheckoutButton() {
+export function CheckoutButton({
+  label = "Pay with Stripe",
+  plan,
+  variant = "default",
+  className,
+  showIcon = true,
+}: {
+  label?: string;
+  plan?: string;
+  variant?: "default" | "outline";
+  className?: string;
+  showIcon?: boolean;
+} = {}) {
   const [isPending, setIsPending] = useState(false);
 
   async function startCheckout() {
@@ -26,6 +38,7 @@ export function CheckoutButton() {
         },
         body: JSON.stringify({
           quantity: 1,
+          plan,
         }),
       });
 
@@ -47,9 +60,19 @@ export function CheckoutButton() {
   }
 
   return (
-    <Button onClick={startCheckout} disabled={isPending} className="w-full gap-2">
-      <CreditCard className="h-4 w-4" />
-      {isPending ? "Redirecting to Stripe..." : "Pay with Stripe"}
+    <Button
+      type="button"
+      variant={variant}
+      onClick={startCheckout}
+      disabled={isPending}
+      className={className ?? "w-full gap-2"}
+    >
+      {isPending ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : showIcon ? (
+        <CreditCard className="h-4 w-4" />
+      ) : null}
+      {isPending ? "Redirecting to Stripe…" : label}
     </Button>
   );
 }

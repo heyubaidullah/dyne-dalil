@@ -245,12 +245,22 @@ export function TopNav({ user }: { user: NavUser | null }) {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Button asChild size="sm" variant="outline" className="ml-1 gap-1.5">
-              <Link href="/login">
-                <LogIn className="h-4 w-4" />
-                Sign in
-              </Link>
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className="hidden sm:inline-flex"
+              >
+                <Link href="/pricing">Pricing</Link>
+              </Button>
+              <Button asChild size="sm" variant="outline" className="ml-1 gap-1.5">
+                <Link href="/login">
+                  <LogIn className="h-4 w-4" />
+                  Sign in
+                </Link>
+              </Button>
+            </div>
           )}
         </div>
       </div>

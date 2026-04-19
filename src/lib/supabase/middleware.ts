@@ -15,6 +15,7 @@ const PUBLIC_ROUTES = new Set<string>([
   "/",
   "/login",
   "/signup",
+  "/pricing",
 ]);
 
 const PUBLIC_PREFIXES = [
