@@ -47,10 +47,22 @@ const ingestSchema = z.object({
   workspace_id: z.string().uuid(),
   title: z.string().trim().max(160).optional().or(z.literal("")),
   source_type: z.string().trim().max(40).optional().or(z.literal("")),
-  raw_text: z
-    .string()
-    .trim()
-    .min(20, "Paste at least a sentence or two — otherwise extraction won't be useful."),
+  raw_text: z.string().trim().optional().or(z.literal("")),
+  pdf_attachment: z
+    .object({
+      file_name: z.string().trim().min(1),
+      mime_type: z.literal("application/pdf"),
+      data_base64: z.string().trim().min(1),
+    })
+    .optional(),
+}).superRefine((data, ctx) => {
+  if (!data.pdf_attachment && (!data.raw_text || data.raw_text.trim().length < 20)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["raw_text"],
+      message: "Paste at least a sentence or two — otherwise extraction won't be useful.",
+    });
+  }
 });
 
 export type IngestResult =
@@ -65,12 +77,24 @@ export async function ingestSignalAction(input: {
   workspace_id: string;
   title?: string;
   source_type?: string;
-  raw_text: string;
+  raw_text?: string;
+  pdf_attachment?: {
+    file_name: string;
+    mime_type: "application/pdf";
+    data_base64: string;
+  };
 }): Promise<IngestResult> {
   const parsed = ingestSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
+
+  const storageRawText =
+    parsed.data.raw_text?.trim().length
+      ? parsed.data.raw_text.trim()
+      : parsed.data.pdf_attachment
+        ? `[PDF attachment] ${parsed.data.pdf_attachment.file_name}`
+        : "";
 
   const sb = db();
   const { data: signal, error: signalErr } = await sb
@@ -79,7 +103,7 @@ export async function ingestSignalAction(input: {
       workspace_id: parsed.data.workspace_id,
       title: parsed.data.title?.length ? parsed.data.title : null,
       source_type: parsed.data.source_type?.length ? parsed.data.source_type : null,
-      raw_text: parsed.data.raw_text,
+      raw_text: storageRawText,
     })
     .select("id")
     .single();
@@ -94,7 +118,18 @@ export async function ingestSignalAction(input: {
       provider: "gemini",
       model: "gemini-2.5-flash",
       systemInstruction: EXTRACTION_SYSTEM,
-      userPrompt: `Extract structure from this signal.\n\n<signal>\n${parsed.data.raw_text}\n</signal>`,
+      userPrompt: parsed.data.pdf_attachment
+        ? `Extract structure from this signal. The user attached a PDF document. Read the PDF content directly and extract the schema.`
+        : `Extract structure from this signal.\n\n<signal>\n${parsed.data.raw_text}\n</signal>`,
+      attachments: parsed.data.pdf_attachment
+        ? [
+            {
+              mimeType: parsed.data.pdf_attachment.mime_type,
+              dataBase64: parsed.data.pdf_attachment.data_base64,
+              fileName: parsed.data.pdf_attachment.file_name,
+            },
+          ]
+        : [],
       schema: ExtractionSchema,
       temperature: 0.2,
     });

@@ -31,7 +31,7 @@ export async function POST(request: Request) {
   try {
     const stream = await streamTextOutput({
       provider: "gemini",
-      model: "gemini-2.5-pro",
+      model: "gemini-2.5-flash",
       systemInstruction: SYSTEM_PROMPT,
       messages: payload.data.messages,
       temperature: 0.2,

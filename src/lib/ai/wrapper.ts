@@ -8,6 +8,11 @@ export interface AIWrapperParams<T> {
   model?: string;
   systemInstruction: string;
   userPrompt: string;
+  attachments?: Array<{
+    mimeType: string;
+    dataBase64: string;
+    fileName?: string;
+  }>;
   schema: z.ZodSchema<T>; // Forces structured output validation
   temperature?: number;
 }
@@ -163,6 +168,7 @@ export async function generateStructuredOutput<T>({
   model,
   systemInstruction,
   userPrompt,
+  attachments = [],
   schema,
   temperature = 0.2,
 }: AIWrapperParams<T>): Promise<T> {
@@ -186,10 +192,17 @@ export async function generateStructuredOutput<T>({
         systemWithHint,
         userPrompt,
         temperature,
+        attachments,
         sanitizeForGemini(jsonSchema),
       );
       break;
     case "openai":
+      if (attachments.length > 0) {
+        throw new AIWrapperError(
+          "UNSUPPORTED_PROVIDER",
+          "Attachments are only implemented for Gemini structured extraction.",
+        );
+      }
       rawJsonString = await callOpenAI(
         selectedModel,
         systemWithHint,
@@ -198,6 +211,12 @@ export async function generateStructuredOutput<T>({
       );
       break;
     case "claude":
+      if (attachments.length > 0) {
+        throw new AIWrapperError(
+          "UNSUPPORTED_PROVIDER",
+          "Attachments are only implemented for Gemini structured extraction.",
+        );
+      }
       rawJsonString = await callClaude(
         selectedModel,
         systemWithHint,
@@ -206,6 +225,12 @@ export async function generateStructuredOutput<T>({
       );
       break;
     case "local":
+      if (attachments.length > 0) {
+        throw new AIWrapperError(
+          "UNSUPPORTED_PROVIDER",
+          "Attachments are only implemented for Gemini structured extraction.",
+        );
+      }
       rawJsonString = await callLocalLlamaCpp(
         selectedModel,
         systemWithHint,
@@ -253,7 +278,6 @@ export async function generateStructuredOutput<T>({
     }
     if (!validation.success) {
       if (process.env.NODE_ENV !== "production") {
-        // eslint-disable-next-line no-console
         console.warn("[ai-wrapper] schema validation failed", {
           provider,
           rawSample: rawJsonString.slice(0, 600),
@@ -431,9 +455,33 @@ async function callGemini(
   system: string,
   prompt: string,
   temp: number,
+  attachments: Array<{
+    mimeType: string;
+    dataBase64: string;
+    fileName?: string;
+  }>,
   responseSchema?: JsonSchemaLike,
 ): Promise<string> {
   const apiKey = getRequiredEnv("GEMINI_API_KEY");
+
+  const userParts: Array<
+    | { text: string }
+    | {
+        inlineData: {
+          mimeType: string;
+          data: string;
+        };
+      }
+  > = [{ text: prompt }];
+
+  for (const file of attachments) {
+    userParts.push({
+      inlineData: {
+        mimeType: file.mimeType,
+        data: file.dataBase64,
+      },
+    });
+  }
 
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
@@ -442,7 +490,7 @@ async function callGemini(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: system }] },
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        contents: [{ role: "user", parts: userParts }],
         generationConfig: {
           temperature: temp,
           responseMimeType: "application/json",
