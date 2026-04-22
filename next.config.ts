@@ -1,7 +1,11 @@
 import type { NextConfig } from "next";
 
+const replitDevDomain = process.env.REPLIT_DEV_DOMAIN;
+
 const nextConfig: NextConfig = {
-  /* config options here */
+  ...(replitDevDomain && {
+    allowedDevOrigins: [replitDevDomain],
+  }),
 };
 
 export default nextConfig;
